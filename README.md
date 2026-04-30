@@ -25,26 +25,6 @@
 
 ---
 
-## How It Works / 工作原理
-
-**English:**
-This plugin uses **ProtocolLib** to intercept and analyze Minecraft protocol packets:
-
-1. **Channel Registration Detection**: Detects when client registers `servux:litematics` (Litematica 1.21.11+ Servux integration)
-2. **Easy Place Vector Analysis**: Calculates `hitVec - blockPos` relative coordinates; vanilla clients stay within `[0..1]`, Litematica's Easy Place exceeds `>2.0`
-3. **NBT Query Monitoring**: Blocks unauthorized block entity/entity tag queries (debug features)
-4. **Printer Prevention**: Enforces server-side raytrace validation and placement speed limits (default: 14 blocks/sec)
-
-**简体中文:**
-本插件使用 **ProtocolLib** 拦截并分析 Minecraft 协议数据包：
-
-1. **频道注册检测**: 检测客户端注册 `servux:litematics`（Litematica 1.21.11+ 的 Servux 集成）
-2. **快捷放置向量分析**: 计算 `hitVec - blockPos` 相对坐标；原版客户端保持在 `[0..1]`，Litematica 的 Easy Place 模式会超过 `>2.0`
-3. **NBT 查询监控**: 阻止未授权的方块实体/实体标签查询（调试功能）
-4. **打印阻止**: 强制服务端射线检测验证和放置速率限制（默认：14方块/秒）
-
----
-
 ## ⚠️ HARD DEPENDENCY / 硬性依赖
 
 > **ProtocolLib is REQUIRED / ProtocolLib 是必需的**
