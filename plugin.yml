@@ -1,0 +1,25 @@
+name: AntiLitematica
+main: top.chenray.antilitematica.AntiLitematicaPlugin
+version: 3.3.0
+api-version: '1.21'
+author: aqing
+depend: [ProtocolLib]
+softdepend: [PlaceholderAPI]
+
+commands:
+  antilitematica:
+    description: AntiLitematica admin command
+    usage: /antilitematica <reload|status|gui>
+    aliases: [al]
+    permission: antilitematica.admin
+
+permissions:
+  antilitematica.admin:
+    description: Allows using /antilitematica
+    default: op
+  antilitematica.bypass:
+    description: Bypass all AntiLitematica checks
+    default: op
+  antilitematica.notify:
+    description: Receive AntiLitematica alerts
+    default: op
