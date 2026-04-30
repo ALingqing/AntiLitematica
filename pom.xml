@@ -6,7 +6,7 @@
 
 	<groupId>top.chenray</groupId>
 	<artifactId>AntiLitematica</artifactId>
-	<version>3.3.0</version>
+	<version>3.4.0</version>
 	<packaging>jar</packaging>
 
 	<name>AntiLitematica</name>
