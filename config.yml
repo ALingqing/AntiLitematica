@@ -22,7 +22,7 @@ dynamic_threshold:
     min: 1.0
     max: 2.0
 
-# Messages are now in messages.yml - edit that file to customize messages
+# Messages are now in messages.yml - edit that file to customize messages.
 # Messages are reloaded with /antilitematica reload
 
 detection:
