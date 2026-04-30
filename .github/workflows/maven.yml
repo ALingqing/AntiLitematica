@@ -1,0 +1,53 @@
+name: Build AntiLitematica
+
+on:
+  push:
+    branches: [ "main", "master" ]
+  pull_request:
+    branches: [ "main", "master" ]
+  workflow_dispatch:  # 手动触发
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v4
+
+    - name: Set up JDK 21
+      uses: actions/setup-java@v4
+      with:
+        java-version: '21'
+        distribution: 'temurin'
+        cache: maven
+
+    # 确保 libs 目录存在（放置 VulcanAPI.jar 和 Matrix.jar）
+    - name: Prepare local dependencies
+      run: |
+        mkdir -p libs
+        ls -la libs/ || echo "libs directory is empty, ensure VulcanAPI.jar and Matrix.jar are committed"
+
+    - name: Build with Maven
+      run: mvn -B clean package --file pom.xml
+
+    # 上传构建产物
+    - name: Upload JAR artifact
+      uses: actions/upload-artifact@v4
+      with:
+        name: AntiLitematica-Build
+        path: target/*.jar
+        retention-days: 7
+
+    # 可选：发布 Release（仅在打标签时）
+    - name: Release JAR
+      if: startsWith(github.ref, 'refs/tags/')
+      uses: softprops/action-gh-release@v1
+      with:
+        files: target/AntiLitematica-*.jar
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+
+    # 可选：依赖图提交（如不需要可删除）
+    # - name: Update dependency graph
+    #   uses: advanced-security/maven-dependency-submission-action@571e99aab1055c2e71a1e2309b9691de18d6b7d6
