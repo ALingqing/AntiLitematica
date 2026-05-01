@@ -14,14 +14,6 @@ With deep ProtocolLib integration, graduated punishment system, and **Geyser (Be
 
 ---
 
-## Live Stats
-
-[![bStats](https://bstats.org/signatures/bukkit/AntiLitematica.svg)](https://bstats.org/plugin/bukkit/AntiLitematica/31012)
-
-Click the badge above to see real-time server usage statistics on bStats.
-
----
-
 ## Features
 
 - **Network Channel Detection** — Detects Litematica (via `servux:litematics`) and Schematica (via `schematica`) channel registration and payloads.
