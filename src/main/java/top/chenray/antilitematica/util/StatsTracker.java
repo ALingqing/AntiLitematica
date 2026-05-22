@@ -64,8 +64,11 @@ public final class StatsTracker {
     /** Get total detections across all time. */
     public int getTotalDetections() {
         int total = 0;
-        for (String key : stats.getConfigurationSection("detections").getKeys(false)) {
-            total += stats.getInt("detections." + key);
+        org.bukkit.configuration.ConfigurationSection sec = stats.getConfigurationSection("detections");
+        if (sec != null) {
+            for (String key : sec.getKeys(false)) {
+                total += stats.getInt("detections." + key);
+            }
         }
         return total;
     }
@@ -73,8 +76,11 @@ public final class StatsTracker {
     /** Get total punishments across all time. */
     public int getTotalPunishments() {
         int total = 0;
-        for (String key : stats.getConfigurationSection("punishments").getKeys(false)) {
-            total += stats.getInt("punishments." + key);
+        org.bukkit.configuration.ConfigurationSection sec = stats.getConfigurationSection("punishments");
+        if (sec != null) {
+            for (String key : sec.getKeys(false)) {
+                total += stats.getInt("punishments." + key);
+            }
         }
         return total;
     }
@@ -90,11 +96,15 @@ public final class StatsTracker {
     /** Get detections by date range. */
     public Map<String, Integer> getDetectionsByDay(int daysBack) {
         Map<String, Integer> map = new ConcurrentHashMap<>();
+        if (daysBack <= 0) return map;
         LocalDate now = LocalDate.now();
-        for (int i = 0; i < daysBack; i++) {
-            String day = now.minusDays(i).format(DAY_FMT);
-            int count = stats.getInt("detections." + day, 0);
-            if (count > 0) map.put(day, count);
+        org.bukkit.configuration.ConfigurationSection sec = stats.getConfigurationSection("detections");
+        if (sec != null) {
+            for (int i = 0; i < daysBack; i++) {
+                String day = now.minusDays(i).format(DAY_FMT);
+                int count = stats.getInt("detections." + day, 0);
+                if (count > 0) map.put(day, count);
+            }
         }
         return map;
     }
@@ -109,14 +119,20 @@ public final class StatsTracker {
     private void cleanOldStats() {
         if (statsRetentionDays <= 0) return;
         String cutoff = LocalDate.now().minusDays(statsRetentionDays).format(DAY_FMT);
-        for (String key : stats.getConfigurationSection("detections").getKeys(false)) {
-            if (key.compareTo(cutoff) < 0) {
-                stats.set("detections." + key, null);
+        org.bukkit.configuration.ConfigurationSection detSec = stats.getConfigurationSection("detections");
+        if (detSec != null) {
+            for (String key : detSec.getKeys(false)) {
+                if (key.compareTo(cutoff) < 0) {
+                    stats.set("detections." + key, null);
+                }
             }
         }
-        for (String key : stats.getConfigurationSection("punishments").getKeys(false)) {
-            if (key.compareTo(cutoff) < 0) {
-                stats.set("punishments." + key, null);
+        org.bukkit.configuration.ConfigurationSection punSec = stats.getConfigurationSection("punishments");
+        if (punSec != null) {
+            for (String key : punSec.getKeys(false)) {
+                if (key.compareTo(cutoff) < 0) {
+                    stats.set("punishments." + key, null);
+                }
             }
         }
         save();
