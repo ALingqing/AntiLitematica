@@ -240,6 +240,17 @@ web_dashboard:
   # Dashboard UI language: zh_CN / en_US / zh_TW
   locale: "zh_CN"
 
+# OneBot 11 (QQ Bot) notification settings
+# Requires a running OneBot 11 HTTP API server (e.g. go-cqhttp, Lagrange.Core)
+onebot:
+  enabled: false
+  # OneBot HTTP API address
+  http_url: "http://localhost:5700"
+  # Access token (if configured in OneBot)
+  access_token: ""
+  # Target QQ group ID to send notifications to (0 to disable group messages)
+  group_id: 0
+
 # Auto update & deploy
 # Automatically downloads the latest AntiLitematica release JAR from GitHub Releases
 # and saves it to the server plugins folder.

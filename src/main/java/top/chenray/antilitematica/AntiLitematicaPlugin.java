@@ -30,6 +30,7 @@ import top.chenray.antilitematica.api.AntiLitematicaAPIImpl;
 import top.chenray.antilitematica.build.AutoBuildManager;
 import top.chenray.antilitematica.update.UpdateChecker;
 import top.chenray.antilitematica.util.DetectionLogger;
+import top.chenray.antilitematica.util.OneBotNotifier;
 import top.chenray.antilitematica.web.DashboardServer;
 
 public final class AntiLitematicaPlugin extends JavaPlugin {
@@ -50,6 +51,7 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private DashboardServer dashboardServer;
    private AutoBuildManager autoBuildManager;
    private DetectionLogger detectionLogger;
+   private OneBotNotifier oneBotNotifier;
 
    public void onEnable() {
       // Fancy startup ASCII art
@@ -111,6 +113,13 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       boolean logEnabled = this.getConfig().getBoolean("detection_log.enabled", false);
       String logFile = this.getConfig().getString("detection_log.file", "detections.log");
       this.detectionLogger = new DetectionLogger(this, logEnabled, logFile);
+
+      // ---- OneBot (QQ Bot) notifier ----
+      if (this.settings.onebot() != null && this.settings.onebot().enabled()) {
+         Settings.OneBot ob = this.settings.onebot();
+         this.oneBotNotifier = new OneBotNotifier(this, ob.httpUrl(), ob.accessToken(), ob.groupId());
+         this.getLogger().info("OneBot notifier enabled: " + ob.httpUrl());
+      }
 
       // ---- Register API ----
       AntiLitematicaAPIImpl api = new AntiLitematicaAPIImpl(this);
@@ -286,5 +295,9 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
    public DetectionLogger getDetectionLogger() {
       return this.detectionLogger;
+   }
+
+   public OneBotNotifier getOneBotNotifier() {
+      return this.oneBotNotifier;
    }
 }

@@ -12,7 +12,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-public record Settings(boolean enabled, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, WebDashboard webDashboard, AutoBuild autoBuild) {
+public record Settings(boolean enabled, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, WebDashboard webDashboard, AutoBuild autoBuild, OneBot onebot) {
    public static Settings from(Plugin plugin, FileConfiguration cfg) {
       boolean enabled = cfg.getBoolean("enabled", true);
 
@@ -146,7 +146,16 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
             ab.getString("post_build_command", "")
       );
 
-      return new Settings(enabled, messages, detection, antiPrinter, commandGuard, graduatedPunishment, integration, discord, whitelist, webDashboard, autoBuild);
+      // ---- OneBot (QQ Bot) ----
+      ConfigurationSection ob = section(cfg, "onebot");
+      OneBot onebot = new OneBot(
+            ob.getBoolean("enabled", false),
+            ob.getString("http_url", "http://localhost:5700"),
+            ob.getString("access_token", ""),
+            ob.getLong("group_id", 0)
+      );
+
+      return new Settings(enabled, messages, detection, antiPrinter, commandGuard, graduatedPunishment, integration, discord, whitelist, webDashboard, autoBuild, onebot);
    }
 
    private static ConfigurationSection section(ConfigurationSection parent, String path) {
@@ -320,6 +329,17 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
       String nightlyTime,     // Nightly auto-update time in "HH:mm" format, empty to disable
       boolean autoReload,     // Whether to run plugman reload after download
       String postBuildCommand // Custom command to run after successful download
+   ) {
+   }
+
+   /**
+    * OneBot 11 (QQ Bot) notification configuration.
+    */
+   public static record OneBot(
+      boolean enabled,
+      String httpUrl,        // OneBot HTTP API URL, e.g. "http://localhost:5700"
+      String accessToken,    // Access token for authorization
+      long groupId           // Target QQ group ID for notifications
    ) {
    }
 }

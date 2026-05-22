@@ -20,6 +20,7 @@ import top.chenray.antilitematica.punish.hook.NoOpBanHook;
 import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.util.DiscordWebhook;
 import top.chenray.antilitematica.util.Msg;
+import top.chenray.antilitematica.util.OneBotNotifier;
 
 /**
  * Graduated punishment system: escalates penalties based on violation count within a time window.
@@ -211,6 +212,8 @@ public final class GraduatedPunisher {
    }
 
    private void sendDiscordNotification(Player player, String channel, String why, String action, String reason) {
+      String reasonText = reason != null ? reason : "Unknown";
+      // ---- Discord Webhook ----
       Settings.Discord dc = this.settings.discord();
       if (dc != null && dc.enabled() && dc.webhookUrl() != null && !dc.webhookUrl().isEmpty()) {
          if (dc.notifyOnPunish()) {
@@ -228,8 +231,14 @@ public final class GraduatedPunisher {
                   dc.proxyPassword() != null ? dc.proxyPassword() : ""
             );
             webhook.sendDetection(player.getName(), player.getUniqueId().toString(), channel,
-                  reason != null ? reason : "Unknown", action);
+                  reasonText, action);
          }
+      }
+
+      // ---- OneBot (QQ) notification ----
+      OneBotNotifier oneBot = this.plugin.getOneBotNotifier();
+      if (oneBot != null) {
+         oneBot.sendDetection(player.getName(), reasonText, action);
       }
    }
 }

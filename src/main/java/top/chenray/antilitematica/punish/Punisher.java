@@ -17,6 +17,7 @@ import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.util.DiscordWebhook;
 import top.chenray.antilitematica.util.Msg;
+import top.chenray.antilitematica.util.OneBotNotifier;
 
 public final class Punisher {
    private Punisher() {
@@ -131,6 +132,8 @@ public final class Punisher {
    }
 
    private static void sendDiscordNotification(AntiLitematicaPlugin plugin, Settings settings, Player player, String channel, String why, String action, boolean punishExecuted) {
+      String reason = why != null ? why : "Unknown";
+      // ---- Discord Webhook ----
       Settings.Discord dc = settings.discord();
       if (dc != null && dc.enabled() && dc.webhookUrl() != null && !dc.webhookUrl().isEmpty()) {
          if (!punishExecuted || dc.notifyOnPunish()) {
@@ -149,10 +152,15 @@ public final class Punisher {
                    dc.proxyUsername() != null ? dc.proxyUsername() : "",
                    dc.proxyPassword() != null ? dc.proxyPassword() : ""
                );
-               String reason = why != null ? why : "Unknown";
                webhook.sendDetection(player.getName(), player.getUniqueId().toString(), channel, reason, action);
             }
          }
+      }
+
+      // ---- OneBot (QQ) notification ----
+      OneBotNotifier oneBot = plugin.getOneBotNotifier();
+      if (oneBot != null) {
+         oneBot.sendDetection(player.getName(), reason, action);
       }
    }
 

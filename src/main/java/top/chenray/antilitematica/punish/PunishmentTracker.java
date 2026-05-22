@@ -150,6 +150,34 @@ public final class PunishmentTracker {
       return this.loadRecord(uuid);
    }
 
+   /**
+    * Get paginated violation detail entries for a player.
+    */
+   public synchronized List<String> getViolationDetails(UUID uuid) {
+      List<String> details = new ArrayList<>();
+      ViolationRecord record = this.loadRecord(uuid);
+      if (record != null) {
+         details.add("Window count: " + record.count() + " | Total: " + record.totalViolations());
+         details.add("First: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+               .format(new java.util.Date(record.firstViolation())));
+         details.add("Last: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
+               .format(new java.util.Date(record.lastViolation())));
+         details.add("Player: " + record.playerName());
+      }
+      return details;
+   }
+
+   /**
+    * Import a previously exported violation record.
+    */
+   public synchronized void importRecord(ViolationRecord record) {
+      if (record == null) return;
+      if (hasDatabase()) {
+         saveRecord(record);
+      }
+      this.memoryCache.put(record.uuid(), record);
+   }
+
    private boolean hasDatabase() {
       return !"memory".equals(storageType) && this.connection != null;
    }
