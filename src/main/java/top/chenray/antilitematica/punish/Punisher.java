@@ -2,6 +2,7 @@ package top.chenray.antilitematica.punish;
 
 import java.util.Date;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
 
 import org.bukkit.BanList.Type;
@@ -19,6 +20,11 @@ public final class Punisher {
    }
 
    public static void punishDetection(AntiLitematicaPlugin plugin, Settings settings, Player player, String channel, String why) {
+      // ---- Whitelist check ----
+      if (isWhitelisted(plugin, settings, player)) {
+         plugin.getLogger().info("[Whitelist] " + player.getName() + " triggered detection (" + why + ") but is whitelisted — logging only.");
+         return;
+      }
       // Use graduated punishment system if enabled
       if (settings.graduatedPunishment() != null && settings.graduatedPunishment().enabled()) {
          plugin.getGraduatedPunisher().punish(player, channel, why);
@@ -112,6 +118,17 @@ public final class Punisher {
             }
          }
       }
+   }
+
+   /**
+    * Check if a player is on the violation whitelist.
+    * If whitelist is enabled and player is listed, only log the detection.
+    */
+   private static boolean isWhitelisted(AntiLitematicaPlugin plugin, Settings settings, Player player) {
+      Settings.Whitelist wl = settings.whitelist();
+      if (wl == null || !wl.enabled()) return false;
+      if (!wl.isLogOnly()) return false;
+      return wl.players().contains(player.getName().toLowerCase(Locale.ROOT));
    }
 
    private static void runCommands(AntiLitematicaPlugin plugin, List<String> commands, Player player, String channel, String why, String reason) {

@@ -1,0 +1,101 @@
+# AntiLitematica Messages Configuration
+# This file contains all customizable messages for the plugin
+
+prefix: "&7[&cAntiLitematica&7] "
+kick: "&cYou are not allowed to use Litematica / Printer (or its network fingerprint) on this server."
+blocked_place: "&cPlease aim at the block before placing (projection/printer placement is forbidden)."
+reload: "&aAntiLitematica configuration reloaded."
+
+# GUI Messages
+gui:
+  # Blank slot
+  empty: "&7点我也没用"
+
+  # Common
+  back: "&c返回上级菜单"
+  save: "&a&l保存并重载配置"
+  current: "&7当前: &f"
+  click_edit: "&e点击编辑"
+  click_toggle: "&e点击切换"
+
+  # Main menu
+  main:
+    title: "&8AntiLitematica &7配置"
+    detection: "&a检测设置"
+    punishment: "&c惩罚设置"
+    integration: "&6反作弊集成"
+    webhook: "&bWebhook设置"
+    printer: "&e反打印机"
+    messages: "&d消息设置"
+    data: "&7数据管理"
+
+  # Detection settings
+  detection:
+    title: "&8检测设置"
+    servux: "&eServux元数据检测"
+    easyplace: "&eEasyPlace检测"
+    nbt: "&eNBT查询检测"
+    channels: "&e检测频道列表"
+
+  # Punishment settings
+  punishment:
+    title: "&8惩罚设置"
+    action: "&c惩罚动作"
+    reason: "&c封禁原因"
+    window: "&c时间窗口"
+    levels: "&c阶梯惩罚详情"
+
+  # Integration settings
+  integration:
+    title: "&8反作弊集成"
+    grim: "&aGrimAC"
+    vulcan: "&aVulcan"
+    matrix: "&aMatrix"
+    vl: "&e违规等级"
+
+  # Webhook
+  webhook:
+    title: "&8Webhook设置"
+    toggle: "&b开关"
+    url: "&b设置URL"
+    trigger: "&b触发条件"
+    test: "&b测试发送"
+
+  # Anti printer
+  printer:
+    title: "&8反打印机设置"
+    toggle: "&e开关"
+    creative: "&e创造模式检测"
+    raytrace: "&e射线检测"
+    rate: "&e放置速率"
+    reach: "&e检测距离"
+
+  # Messages settings
+  messages:
+    title: "&8消息设置"
+    prefix: "&d前缀"
+    kick: "&d踢出消息"
+    blocked: "&d阻止放置消息"
+
+  # Data management
+  data:
+    title: "&8数据管理"
+    reset: "&7重置玩家记录"
+    history: "&7查看玩家历史"
+    clear: "&4清空过期数据"
+
+# Input prompts
+input:
+  webhook_url: "&e请在聊天栏输入 Discord Webhook URL\n&7输入 &ccancel &7取消"
+  ban_reason: "&e请在聊天栏输入封禁原因\n&7输入 &ccancel &7取消"
+  channel_list: "&e请在聊天栏输入频道列表，用逗号分隔\n&7输入 &ccancel &7取消"
+  player_name: "&e请在聊天栏输入玩家名\n&7输入 &ccancel &7取消"
+  cancel: "&c已取消"
+  success: "&a保存成功！"
+  invalid_url: "&c无效的URL格式！"
+  timeout: "&c输入超时，已取消"
+
+# Status display
+status:
+  enabled: "&a开启"
+  disabled: "&c关闭"

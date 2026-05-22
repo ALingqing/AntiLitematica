@@ -66,6 +66,12 @@ public final class GraduatedPunisher {
    }
 
    public void punish(Player player, String channel, String why) {
+      // ---- Whitelist check ----
+      if (isWhitelisted(player)) {
+         this.plugin.getLogger().info("[GraduatedPunish][Whitelist] " + player.getName()
+               + " triggered detection but is whitelisted — logging only.");
+         return;
+      }
       Settings.GraduatedPunishment gp = this.settings.graduatedPunishment();
       if (gp == null || !gp.enabled()) {
          return;
@@ -141,6 +147,13 @@ public final class GraduatedPunisher {
    public void reload() {
       this.resolveHook();
       this.notifiedLevel.clear();
+   }
+
+   private boolean isWhitelisted(Player player) {
+      Settings.Whitelist wl = this.settings.whitelist();
+      if (wl == null || !wl.enabled()) return false;
+      if (!wl.isLogOnly()) return false;
+      return wl.players().contains(player.getName().toLowerCase(Locale.ROOT));
    }
 
    private long parseDuration(String duration) {

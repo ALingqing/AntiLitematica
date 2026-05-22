@@ -25,6 +25,8 @@ import top.chenray.antilitematica.punish.PunishmentTracker;
 import top.chenray.antilitematica.placeholder.AntiLitematicaExpansion;
 import top.chenray.antilitematica.state.PunishStateListener;
 import top.chenray.antilitematica.threshold.DynamicThresholdManager;
+import top.chenray.antilitematica.update.UpdateChecker;
+import top.chenray.antilitematica.web.DashboardServer;
 
 public final class AntiLitematicaPlugin extends JavaPlugin {
    private volatile Settings settings;
@@ -40,6 +42,8 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private GuiInputManager guiInputManager;
    private GuiListener guiListener;
    private DynamicThresholdManager dynamicThresholdManager;
+   private UpdateChecker updateChecker;
+   private DashboardServer dashboardServer;
 
    public void onEnable() {
       // Fancy startup ASCII art
@@ -78,6 +82,17 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          metrics.addCustomChart(new SimplePie("detection_action", () -> this.settings.detection().action().name()));
       }
 
+      // Auto-update checker
+      this.updateChecker = new UpdateChecker(this);
+      this.updateChecker.start();
+
+      // Web Dashboard
+      if (this.settings.webDashboard() != null && this.settings.webDashboard().enabled()) {
+         Settings.WebDashboard wd = this.settings.webDashboard();
+         this.dashboardServer = new DashboardServer(this, wd.port(), wd.password(), wd.locale());
+         this.dashboardServer.start();
+      }
+
    }
 
    public void onDisable() {
@@ -103,6 +118,14 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
       if (this.punishmentTracker != null) {
          this.punishmentTracker.shutdown();
+      }
+
+      if (this.updateChecker != null) {
+         // UpdateChecker listeners auto-cleaned by HandlerList
+      }
+
+      if (this.dashboardServer != null) {
+         this.dashboardServer.stop();
       }
 
       this.punished.clear();
@@ -199,5 +222,13 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
    public DynamicThresholdManager getDynamicThresholdManager() {
       return this.dynamicThresholdManager;
+   }
+
+   public UpdateChecker getUpdateChecker() {
+      return this.updateChecker;
+   }
+
+   public DashboardServer getDashboardServer() {
+      return this.dashboardServer;
    }
 }

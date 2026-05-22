@@ -31,6 +31,36 @@ With deep ProtocolLib integration, graduated punishment system, and **Geyser (Be
 - **Dynamic Thresholds** — Auto-adjusts detection sensitivity based on server TPS and online player count.
 - **In-Game GUI Config** — Manage all settings through an intuitive inventory GUI with live reload.
 - **PlaceholderAPI Support** — Exposes placeholders for external plugins.
+- **Auto Update Checker** — Automatically checks for new versions on GitHub and notifies admins on join. Manual check via `/al update`.
+- **Violation Whitelist** — Whitelist trusted players to only log detections without punishment. Manage via `/al whitelist`.
+- **Web Dashboard** — Built-in web-based monitoring panel with real-time stats, player list, violation records, and quick settings. Supports **简体中文**, **English**, and **繁體中文**.
+
+---
+
+## Violation Whitelist
+
+The whitelist feature allows you to exempt specific players from punishment while still logging their detections.
+
+```yaml
+whitelist:
+  enabled: true
+  mode: "LOG_ONLY"      # LOG_ONLY: log only, no punishment
+  players:
+    - "trusted_builder"
+    - "admin_player"
+```
+
+When a whitelisted player triggers a detection:
+- The detection is logged to console
+- No kick/ban/warn is executed
+- Staff are not spammed with false alarms
+
+Manage the whitelist in-game:
+```
+/al whitelist list              — List all whitelisted players
+/al whitelist add <player>      — Add a player
+/al whitelist remove <player>   — Remove a player
+```
 
 ---
 
@@ -46,12 +76,15 @@ With deep ProtocolLib integration, graduated punishment system, and **Geyser (Be
 ## Commands
 
 ```
-/antilitematica reload    — Reload configuration
-/antilitematica gui       — Open configuration GUI
-/antilitematica status    — View current settings
-/antilitematica reset <player>   — Reset violation record
-/antilitematica history <player> — View violation history
-/antilitematica update    — Check for updates
+/antilitematica reload                 — Reload configuration
+/antilitematica gui                    — Open configuration GUI
+/antilitematica status                 — View current settings
+/antilitematica reset <player>         — Reset violation record
+/antilitematica history <player>       — View violation history
+/antilitematica update                 — Check for updates
+/antilitematica whitelist list         — List whitelisted players
+/antilitematica whitelist add <player> — Add player to whitelist
+/antilitematica whitelist remove <player> — Remove player from whitelist
 ```
 
 Alias: `/al`
@@ -85,6 +118,37 @@ All settings are stored in `config.yml` and `messages.yml`. Key sections:
 - `graduated_punishment` — Escalation levels and durations
 - `geyser_compat` — Enable/disable Bedrock player exemption
 - `discord` — Webhook URL and notification settings
+- `locale` — Message language (`zh_CN` / `en_US` / `zh_TW`)
+- `whitelist` — Violation whitelist (player names, LOG_ONLY mode)
+- `web_dashboard` — Built-in web monitoring panel (port, password, locale)
+
+---
+
+## Web Dashboard
+
+AntiLitematica includes a built-in web-based monitoring dashboard — no additional web server required.
+
+### Access
+
+1. Enable the dashboard in `config.yml`:
+   ```yaml
+   web_dashboard:
+     enabled: true
+     port: 25418
+     password: "your_password"
+     locale: "zh_CN"   # zh_CN / en_US / zh_TW
+   ```
+2. Restart or `/al reload`
+3. Open `http://<your-server-ip>:25418` in your browser
+4. Enter the password configured above
+
+### Dashboard Features
+
+- **📊 Overview** — Server TPS, online players, detection/punishment counts, plugin status
+- **👤 Players** — Real-time online player list with ping, gamemode, violation count; reset player violations
+- **⚠️ Violations** — View and clear violation records
+- **⚙️ Quick Settings** — Toggle detection, anti-printer, and webhook on/off
+- **🌐 Multi-Language** — Switch between 简体中文, English, and 繁體中文
 
 ---
 

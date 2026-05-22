@@ -12,11 +12,13 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-public record Settings(boolean enabled, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord) {
+public record Settings(boolean enabled, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, WebDashboard webDashboard) {
    public static Settings from(Plugin plugin, FileConfiguration cfg) {
       boolean enabled = cfg.getBoolean("enabled", true);
-      // Load messages from separate messages.yml file
-      File messagesFile = new File(plugin.getDataFolder(), "messages.yml");
+
+      // ---- Locale-aware messages ----
+      String locale = cfg.getString("locale", "zh_CN");
+      File messagesFile = findMessagesFile(plugin, locale);
       FileConfiguration messagesCfg = YamlConfiguration.loadConfiguration(messagesFile);
       String prefix = messagesCfg.getString("prefix", "&7[&cAntiLitematica&7] ");
       String kickMsg = messagesCfg.getString("kick", "&cYou are not allowed to use Litematica / Printer (or its network fingerprint) on this server.");
@@ -75,6 +77,23 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
          dc.getString("proxy_username", ""),
          dc.getString("proxy_password", "")
       );
+      // ---- Web Dashboard ----
+      ConfigurationSection wd = section(cfg, "web_dashboard");
+      WebDashboard webDashboard = new WebDashboard(
+            wd.getBoolean("enabled", false),
+            wd.getInt("port", 25418),
+            wd.getString("password", "admin"),
+            wd.getString("locale", "zh_CN")
+      );
+
+      // ---- Violation Whitelist ----
+      ConfigurationSection wl = section(cfg, "whitelist");
+      Whitelist whitelist = new Whitelist(
+            wl.getBoolean("enabled", false),
+            wl.getString("mode", "LOG_ONLY"),
+            normalizedSet(wl.getStringList("players"))
+      );
+
       ConfigurationSection gp = section(cfg, "graduated_punishment");
       ConfigurationSection gpLevels = section(gp, "levels");
       List<PunishmentLevel> levels = new ArrayList<>();
@@ -110,12 +129,39 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
             exceedMax,
             banPlugins
       );
-      return new Settings(enabled, messages, detection, antiPrinter, commandGuard, graduatedPunishment, integration, discord);
+      return new Settings(enabled, messages, detection, antiPrinter, commandGuard, graduatedPunishment, integration, discord, whitelist, webDashboard);
    }
 
    private static ConfigurationSection section(ConfigurationSection parent, String path) {
       ConfigurationSection sec = parent.getConfigurationSection(path);
       return sec != null ? sec : parent.createSection(path);
+   }
+
+   /**
+    * Find the best available messages file for the given locale.
+    * Falls back: messages_{locale}.yml → messages.yml → default messages from jar
+    */
+   private static File findMessagesFile(Plugin plugin, String locale) {
+      if (locale == null || locale.isEmpty() || "default".equalsIgnoreCase(locale)) {
+         locale = "zh_CN";
+      }
+      // Try locale-specific file first
+      File localeFile = new File(plugin.getDataFolder(), "messages_" + locale + ".yml");
+      if (localeFile.exists()) return localeFile;
+
+      // Try saving default locale file from jar
+      String resourcePath = "messages_" + locale + ".yml";
+      if (plugin.getResource(resourcePath) != null) {
+         plugin.saveResource(resourcePath, false);
+         return localeFile;
+      }
+
+      // Fall back to default messages.yml
+      File defaultFile = new File(plugin.getDataFolder(), "messages.yml");
+      if (!defaultFile.exists()) {
+         plugin.saveResource("messages.yml", false);
+      }
+      return defaultFile;
    }
 
    private static Set<String> normalizedSet(List<String> in) {
@@ -213,5 +259,30 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
       public boolean hasProxy() {
          return proxyHost != null && !proxyHost.isEmpty() && proxyPort > 0;
       }
+   }
+
+   /**
+    * Violation whitelist: players who trigger detection but only get logged,
+    * no punishment is applied.
+    */
+   public static record Whitelist(
+      boolean enabled,
+      String mode,       // LOG_ONLY or NORMAL
+      Set<String> players // lowercase player names
+   ) {
+      public boolean isLogOnly() {
+         return "LOG_ONLY".equalsIgnoreCase(mode);
+      }
+   }
+
+   /**
+    * Built-in web dashboard configuration.
+    */
+   public static record WebDashboard(
+      boolean enabled,
+      int port,
+      String password,
+      String locale  // zh_CN / en_US / zh_TW
+   ) {
    }
 }
