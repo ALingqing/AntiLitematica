@@ -65,6 +65,8 @@ public final class AntiLitematicaCommand implements CommandExecutor {
             return handleHistory(sender, args[1]);
          case "update":
             return handleUpdate(sender);
+         case "build":
+            return handleBuild(sender);
          case "whitelist":
             return handleWhitelist(sender, args);
          default:
@@ -129,6 +131,40 @@ public final class AntiLitematicaCommand implements CommandExecutor {
          // Force re-check
          this.plugin.getUpdateChecker().checkAsync();
       }
+      return true;
+   }
+
+   private boolean handleBuild(CommandSender sender) {
+      Settings.AutoBuild ab = this.plugin.settings().autoBuild();
+      if (ab == null || !ab.enabled()) {
+         sender.sendMessage(ChatColor.RED + "Auto-update is not enabled in config.yml.");
+         return true;
+      }
+      if (ab.outputPath() == null || ab.outputPath().isEmpty()) {
+         sender.sendMessage(ChatColor.RED + "Auto-update output_path is not configured.");
+         return true;
+      }
+      sender.sendMessage(ChatColor.GRAY + "Checking for updates on GitHub...");
+      this.plugin.getAutoBuildManager().checkUpdateAsync().thenAccept(version -> {
+         if (version == null) {
+            sender.sendMessage(ChatColor.RED + "Failed to check for updates. See console for details.");
+            return;
+         }
+         String current = this.plugin.getDescription().getVersion();
+         if (version.equals(current)) {
+            sender.sendMessage(ChatColor.GREEN + "Already at the latest version (v" + current + ").");
+            return;
+         }
+         sender.sendMessage(ChatColor.GRAY + "New version found: v" + version + " (current: v" + current + "). Downloading...");
+         this.plugin.getAutoBuildManager().downloadLatestAsync().thenAccept(success -> {
+            if (success) {
+               sender.sendMessage(ChatColor.GREEN + "Downloaded v" + version + " successfully!");
+               sender.sendMessage(ChatColor.GRAY + "Run &e/plugman reload AntiLitematica&7 or restart server to apply.");
+            } else {
+               sender.sendMessage(ChatColor.RED + "Download failed. Check server console for details.");
+            }
+         });
+      });
       return true;
    }
 

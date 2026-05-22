@@ -20,6 +20,8 @@ import org.bukkit.event.block.BlockPlaceEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.RayTraceResult;
 import top.chenray.antilitematica.AntiLitematicaPlugin;
+import top.chenray.antilitematica.api.event.DetectionEvent;
+import top.chenray.antilitematica.api.event.PunishmentEvent;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.util.Msg;
 import top.chenray.antilitematica.util.TokenBucket;
@@ -142,8 +144,12 @@ public final class PlacementGuard implements Listener {
          p.sendMessage(Msg.color(var10001 + this.settings.messages().blockedPlace()));
       }
 
+      // ---- Fire DetectionEvent ----
+      DetectionEvent detectionEvent = new DetectionEvent(p, "printer", type, DetectionEvent.DetectionType.PRINTER);
+      Bukkit.getPluginManager().callEvent(detectionEvent);
+
       if (n >= this.effectiveKickAtPrinter()) {
-         if (p.isOnline()) {
+         if (p.isOnline() && !detectionEvent.isCancelled()) {
             this.plugin.getLogger().info("Kicking " + p.getName() + " due to repeated blocked placements (" + type + "), violations=" + n);
             Bukkit.getScheduler().runTask(this.plugin, () -> {
                if (p.isOnline() && !shouldBypass(p)) {
@@ -151,6 +157,14 @@ public final class PlacementGuard implements Listener {
                   p.kickPlayer(Msg.color(var10001 + this.settings.messages().kick()));
                }
 
+            });
+            // ---- Fire PunishmentEvent ----
+            Bukkit.getScheduler().runTask(this.plugin, () -> {
+               try {
+                  PunishmentEvent pe = new PunishmentEvent(p, "printer", type,
+                        PunishmentEvent.PunishmentAction.KICK, n, "printer");
+                  Bukkit.getPluginManager().callEvent(pe);
+               } catch (Exception ignored) {}
             });
          }
       } else {

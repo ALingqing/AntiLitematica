@@ -25,6 +25,8 @@ import top.chenray.antilitematica.punish.PunishmentTracker;
 import top.chenray.antilitematica.placeholder.AntiLitematicaExpansion;
 import top.chenray.antilitematica.state.PunishStateListener;
 import top.chenray.antilitematica.threshold.DynamicThresholdManager;
+import top.chenray.antilitematica.api.AntiLitematicaAPIImpl;
+import top.chenray.antilitematica.build.AutoBuildManager;
 import top.chenray.antilitematica.update.UpdateChecker;
 import top.chenray.antilitematica.web.DashboardServer;
 
@@ -44,6 +46,7 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private DynamicThresholdManager dynamicThresholdManager;
    private UpdateChecker updateChecker;
    private DashboardServer dashboardServer;
+   private AutoBuildManager autoBuildManager;
 
    public void onEnable() {
       // Fancy startup ASCII art
@@ -93,6 +96,21 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          this.dashboardServer.start();
       }
 
+      // Auto Build Manager
+      this.autoBuildManager = new AutoBuildManager(this);
+      if (this.settings.autoBuild() != null && this.settings.autoBuild().enabled()) {
+         this.autoBuildManager.start();
+      }
+
+      // ---- Register API ----
+      AntiLitematicaAPIImpl api = new AntiLitematicaAPIImpl(this);
+      AntiLitematicaAPIImpl.INSTANCE = api;
+      this.getServer().getServicesManager().register(
+            top.chenray.antilitematica.api.AntiLitematicaAPI.class,
+            api, this,
+            org.bukkit.plugin.ServicePriority.Normal);
+      this.getLogger().info("API registered: " + api.getClass().getName());
+
    }
 
    public void onDisable() {
@@ -122,6 +140,10 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
       if (this.updateChecker != null) {
          // UpdateChecker listeners auto-cleaned by HandlerList
+      }
+
+      if (this.autoBuildManager != null) {
+         this.autoBuildManager.stop();
       }
 
       if (this.dashboardServer != null) {
@@ -163,6 +185,11 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
       if (this.punishmentTracker != null) {
          this.punishmentTracker.shutdown();
+      }
+
+      // Reschedule auto-update after config reload
+      if (this.autoBuildManager != null) {
+         this.autoBuildManager.reschedule();
       }
 
       this.punished.clear();
@@ -230,5 +257,9 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
    public DashboardServer getDashboardServer() {
       return this.dashboardServer;
+   }
+
+   public AutoBuildManager getAutoBuildManager() {
+      return this.autoBuildManager;
    }
 }

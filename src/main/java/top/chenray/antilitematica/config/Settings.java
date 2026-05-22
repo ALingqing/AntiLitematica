@@ -12,7 +12,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-public record Settings(boolean enabled, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, WebDashboard webDashboard) {
+public record Settings(boolean enabled, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, WebDashboard webDashboard, AutoBuild autoBuild) {
    public static Settings from(Plugin plugin, FileConfiguration cfg) {
       boolean enabled = cfg.getBoolean("enabled", true);
 
@@ -129,7 +129,18 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
             exceedMax,
             banPlugins
       );
-      return new Settings(enabled, messages, detection, antiPrinter, commandGuard, graduatedPunishment, integration, discord, whitelist, webDashboard);
+
+      // ---- Auto Build / Update ----
+      ConfigurationSection ab = section(cfg, "auto_build");
+      AutoBuild autoBuild = new AutoBuild(
+            ab.getBoolean("enabled", false),
+            ab.getString("output_path", ""),
+            ab.getString("nightly_time", "03:00"),
+            ab.getBoolean("auto_reload", false),
+            ab.getString("post_build_command", "")
+      );
+
+      return new Settings(enabled, messages, detection, antiPrinter, commandGuard, graduatedPunishment, integration, discord, whitelist, webDashboard, autoBuild);
    }
 
    private static ConfigurationSection section(ConfigurationSection parent, String path) {
@@ -283,6 +294,19 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
       int port,
       String password,
       String locale  // zh_CN / en_US / zh_TW
+   ) {
+   }
+
+   /**
+    * Auto update & deploy configuration.
+    * Downloads the latest release JAR from GitHub Releases.
+    */
+   public static record AutoBuild(
+      boolean enabled,
+      String outputPath,      // Server plugins folder to save the downloaded JAR to
+      String nightlyTime,     // Nightly auto-update time in "HH:mm" format, empty to disable
+      boolean autoReload,     // Whether to run plugman reload after download
+      String postBuildCommand // Custom command to run after successful download
    ) {
    }
 }

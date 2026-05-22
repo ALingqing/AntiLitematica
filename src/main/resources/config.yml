@@ -216,3 +216,20 @@ web_dashboard:
   password: "admin"
   # Dashboard UI language: zh_CN / en_US / zh_TW
   locale: "zh_CN"
+
+# Auto update & deploy
+# Automatically downloads the latest AntiLitematica release JAR from GitHub Releases
+# and saves it to the server plugins folder.
+# The download runs asynchronously and does not block the server.
+auto_build:
+  enabled: false
+  # Path to the server plugins folder where the downloaded JAR will be placed
+  output_path: ""
+  # Nightly auto-update time (24-hour format, server local time)
+  # Set to empty string "" to disable nightly auto-updates
+  nightly_time: "03:00"
+  # Whether to run /plugman reload AntiLitematica after successful download (requires PlugManX)
+  auto_reload: false
+  # Custom command to run after successful download (e.g., "plugman reload AntiLitematica")
+  # If empty, uses the auto_reload setting above
+  post_build_command: ""

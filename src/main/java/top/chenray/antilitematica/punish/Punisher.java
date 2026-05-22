@@ -11,6 +11,8 @@ import org.bukkit.command.CommandSender;
 import org.bukkit.entity.Player;
 
 import top.chenray.antilitematica.AntiLitematicaPlugin;
+import top.chenray.antilitematica.api.event.DetectionEvent;
+import top.chenray.antilitematica.api.event.PunishmentEvent;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.util.DiscordWebhook;
 import top.chenray.antilitematica.util.Msg;
@@ -20,6 +22,16 @@ public final class Punisher {
    }
 
    public static void punishDetection(AntiLitematicaPlugin plugin, Settings settings, Player player, String channel, String why) {
+      // ---- Fire DetectionEvent (cancellable) ----
+      DetectionEvent detectionEvent = new DetectionEvent(player, channel, why,
+            "printer".equals(channel) ? DetectionEvent.DetectionType.PRINTER
+            : DetectionEvent.DetectionType.SIGNAL);
+      Bukkit.getPluginManager().callEvent(detectionEvent);
+      if (detectionEvent.isCancelled()) {
+         plugin.getLogger().info("[API] Detection cancelled by event for " + player.getName());
+         return;
+      }
+
       // ---- Whitelist check ----
       if (isWhitelisted(plugin, settings, player)) {
          plugin.getLogger().info("[Whitelist] " + player.getName() + " triggered detection (" + why + ") but is whitelisted — logging only.");
@@ -90,8 +102,25 @@ public final class Punisher {
          }
 
          sendDiscordNotification(plugin, settings, player, channel, why, actionName, punishExecuted);
+
+         // ---- Fire PunishmentEvent ----
+         try {
+            PunishmentEvent.PunishmentAction pa = parsePunishmentAction(actionName);
+            PunishmentEvent punishmentEvent = new PunishmentEvent(player, channel, reason, pa, 0, "legacy");
+            Bukkit.getPluginManager().callEvent(punishmentEvent);
+         } catch (Exception ignored) {
+            // event listener errors must not break punishment logic
+         }
       }
 
+   }
+
+   private static PunishmentEvent.PunishmentAction parsePunishmentAction(String action) {
+      try {
+         return PunishmentEvent.PunishmentAction.valueOf(action.toUpperCase(Locale.ROOT));
+      } catch (Exception e) {
+         return PunishmentEvent.PunishmentAction.LOG;
+      }
    }
 
    private static void sendDiscordNotification(AntiLitematicaPlugin plugin, Settings settings, Player player, String channel, String why, String action, boolean punishExecuted) {

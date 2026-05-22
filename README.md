@@ -2,166 +2,180 @@
 
 **The ultimate Litematica / Schematica / Printer detection plugin for Paper/Spigot**
 
-![Version](https://img.shields.io/badge/version-3.5.0-blue) ![MC Version](https://img.shields.io/badge/1.12.2%2B-green) [![bStats](https://bstats.org/signatures/bukkit/AntiLitematica.svg)](https://bstats.org/plugin/bukkit/AntiLitematica/31012)
+![Version](https://img.shields.io/badge/version-5.0.0-blue) ![MC Version](https://img.shields.io/badge/1.12.2%2B-green) [![bStats](https://bstats.org/signatures/bukkit/AntiLitematica.svg)](https://bstats.org/plugin/bukkit/AntiLitematica/31012)
 
 ---
 
 ## Overview
 
-AntiLitematica is a powerful server-side plugin designed to detect and prevent the use of **Litematica**, **Schematica**, and their **Printer** features on your Minecraft server. It operates entirely server-side — no client mod installation required.
+AntiLitematica is a powerful server-side plugin designed to detect and prevent the use of **Litematica**, **Schematica**, and their **Printer** features on your Minecraft server. Operates entirely server-side — no client mod installation required.
 
-With deep ProtocolLib integration, graduated punishment system, and **Geyser (Bedrock) compatibility**, AntiLitematica provides robust protection while keeping false positives to a minimum.
+With deep ProtocolLib integration, graduated punishment system, **Geyser (Bedrock) compatibility**, and a built-in **Web Dashboard**, AntiLitematica provides robust protection while keeping false positives to a minimum.
 
 ---
 
 ## Features
 
-- **Network Channel Detection** — Detects Litematica (via `servux:litematics`) and Schematica (via `schematica`) channel registration and payloads.
-- **ProtocolLib Deep Inspection** — Catches EasyPlace protocol abuse, debug NBT queries, and custom payload fingerprints even when players disable Servux sync.
-- **Anti-Printer Engine** — Multi-layered block placement analysis:
-  - Enforced raytrace (players must look at blocks they place)
-  - Placement rate limiting
-  - Consecutive same-type block detection
-  - No look-change detection (bots don't micro-adjust aim)
-- **Command Guard** — Blocks rapid command execution and `/setblock` spam commonly used by schematic quick-paste.
-- **Graduated Punishment System** — Escalating penalties: Warn → TempBan → Ban. Supports LiteBans, AdvancedBan, and EssentialsX.
-- **Geyser Compatible** — Automatically exempts Bedrock players from all checks to prevent false positives from protocol translation.
-- **Discord Webhook** — Send rich embed alerts to your staff Discord when detections or punishments occur.
-- **Anti-Cheat Integration** — Optional GrimAC integration to feed violations into your existing anti-cheat.
-- **Dynamic Thresholds** — Auto-adjusts detection sensitivity based on server TPS and online player count.
-- **In-Game GUI Config** — Manage all settings through an intuitive inventory GUI with live reload.
-- **PlaceholderAPI Support** — Exposes placeholders for external plugins.
-- **Auto Update Checker** — Automatically checks for new versions on GitHub and notifies admins on join. Manual check via `/al update`.
-- **Violation Whitelist** — Whitelist trusted players to only log detections without punishment. Manage via `/al whitelist`.
-- **Web Dashboard** — Built-in web-based monitoring panel with real-time stats, player list, violation records, and quick settings. Supports **简体中文**, **English**, and **繁體中文**.
+- **🔍 Network Channel Detection** — Detects Litematica (`servux:litematics`) and Schematica channel registration
+- **🛡️ ProtocolLib Deep Inspection** — EasyPlace abuse, NBT queries, Servux metadata fingerprints
+- **🚫 Anti-Printer Engine** — Raytrace enforcement, rate limiting, same-type detection, no-look-change detection
+- **📋 Command Guard** — Blocks `/setblock` spam and rapid command execution
+- **📈 Graduated Punishment** — Escalating penalties: Warn → TempBan → Ban (LiteBans / AdvancedBan / EssentialsX)
+- **🌐 Geyser Compatible** — Bedrock players auto-exempted from checks
+- **💬 Discord Webhook** — Rich embed alerts on detection and punishment
+- **🔗 Anti-Cheat Integration** — Optional GrimAC integration
+- **📊 Dynamic Thresholds** — Auto-adjusts sensitivity based on TPS and player count
+- **🎮 In-Game GUI Config** — Manage settings through an intuitive inventory GUI
+- **🔌 PlaceholderAPI Support** — Placeholders for external plugins
+- **📡 Auto Update Checker** — GitHub release notifications on join
+- **✅ Violation Whitelist** — Trusted players: log only, no punishment
+- **🌐 Web Dashboard** — Built-in monitoring panel (no extra dependencies) with zh_CN / en_US / zh_TW
+- **⬇️ Auto GitHub Download** — Nightly or command-triggered release downloads
+- **📦 Public API** — Events, queries, and integration for other plugins
 
 ---
 
-## Violation Whitelist
-
-The whitelist feature allows you to exempt specific players from punishment while still logging their detections.
+## Quick Start
 
 ```yaml
-whitelist:
+# 1. Install ProtocolLib and AntiLitematica
+# 2. Edit plugins/AntiLitematica/config.yml:
+
+detection:
   enabled: true
-  mode: "LOG_ONLY"      # LOG_ONLY: log only, no punishment
-  players:
-    - "trusted_builder"
-    - "admin_player"
+  action: "KICK"
+
+# 3. Run /al reload
 ```
 
-When a whitelisted player triggers a detection:
-- The detection is logged to console
-- No kick/ban/warn is executed
-- Staff are not spammed with false alarms
-
-Manage the whitelist in-game:
-```
-/al whitelist list              — List all whitelisted players
-/al whitelist add <player>      — Add a player
-/al whitelist remove <player>   — Remove a player
-```
-
----
-
-## How It Works
-
-1. When a player joins, the plugin monitors registered plugin channels. If `servux:litematics` or `schematica` is detected, action is taken immediately.
-2. ProtocolLib intercepts suspicious packets (abnormal hit vectors, NBT queries) that are strong indicators of Litematica's EasyPlace or Printer.
-3. The Anti-Printer engine analyzes every block placement for inhuman patterns (too fast, no raytrace, no camera movement).
-4. All checks respect the `antilitematica.bypass` permission and skip Geyser Bedrock players automatically.
+For full installation instructions, see [wiki/INSTALL.md](wiki/INSTALL.md).
 
 ---
 
 ## Commands
 
-```
-/antilitematica reload                 — Reload configuration
-/antilitematica gui                    — Open configuration GUI
-/antilitematica status                 — View current settings
-/antilitematica reset <player>         — Reset violation record
-/antilitematica history <player>       — View violation history
-/antilitematica update                 — Check for updates
-/antilitematica whitelist list         — List whitelisted players
-/antilitematica whitelist add <player> — Add player to whitelist
-/antilitematica whitelist remove <player> — Remove player from whitelist
-```
+| Command | Alias | Description |
+|---------|-------|-------------|
+| `/antilitematica reload` | `/al reload` | Reload configuration |
+| `/antilitematica gui` | `/al gui` | Open configuration GUI |
+| `/antilitematica status` | `/al status` | View plugin status |
+| `/antilitematica update` | `/al update` | Check for updates |
+| `/antilitematica build` | `/al build` | Download latest release |
+| `/antilitematica reset <player>` | `/al reset` | Reset violation record |
+| `/antilitematica history <player>` | `/al history` | View violation history |
+| `/antilitematica whitelist ...` | `/al whitelist` | Manage whitelist |
 
-Alias: `/al`
+Full reference: [wiki/COMMANDS.md](wiki/COMMANDS.md)
 
 ---
 
 ## Permissions
 
-```
-antilitematica.admin    — Access to all commands
-antilitematica.bypass   — Bypass all detection checks
-antilitematica.notify   — Receive staff alert messages
-```
+| Permission | Default | Description |
+|------------|---------|-------------|
+| `antilitematica.admin` | OP | All commands |
+| `antilitematica.bypass` | OP | Bypass all checks |
+| `antilitematica.notify` | OP | Receive alerts |
+
+---
+
+## Documentation
+
+| 📘 **User Guide** | 📗 **Developer Guide** |
+|-------------------|------------------------|
+| [Installation](wiki/INSTALL.md) | [API Reference](docs/API.md) |
+| [Configuration](wiki/CONFIG.md) | [Architecture](docs/ARCHITECTURE.md) |
+| [Commands & Permissions](wiki/COMMANDS.md) | [Contributing](docs/CONTRIBUTING.md) |
+| [Web Dashboard](wiki/WEB_DASHBOARD.md) | |
+| [FAQ](wiki/FAQ.md) | |
 
 ---
 
 ## Dependencies
 
 - **Required:** [ProtocolLib](https://www.spigotmc.org/resources/protocollib/1997/)
-- **Soft-Depends:** PlaceholderAPI, Geyser, LiteBans, AdvancedBan, EssentialsX
+- **Optional:** PlaceholderAPI, Geyser, LiteBans, AdvancedBan, EssentialsX
 
 ---
 
-## Configuration
+## How It Works
 
-All settings are stored in `config.yml` and `messages.yml`. Key sections:
+1. **Channel Detection** — Monitors plugin channel registration. `servux:litematics` → immediate action.
+2. **ProtocolLib Signals** — Intercepts abnormal hit vectors (EasyPlace), NBT queries, and Servux metadata.
+3. **Anti-Printer** — Analyzes every block placement: raytrace, rate, same-type streaks, camera movement.
+4. **Command Guard** — Detects rapid command bursts used by schematic quick-paste.
+5. **Punishment** — Graduated system escalates from warn → tempban → ban. Supports LiteBans, AdvancedBan, EssentialsX.
 
-- `detection` — Channel list, action type (LOG/KICK/BAN/COMMANDS), ProtocolLib signals
-- `anti_printer` — Raytrace, rate limits, pattern detection thresholds
-- `command_guard` — Blocked commands and burst limits
-- `graduated_punishment` — Escalation levels and durations
-- `geyser_compat` — Enable/disable Bedrock player exemption
-- `discord` — Webhook URL and notification settings
-- `locale` — Message language (`zh_CN` / `en_US` / `zh_TW`)
-- `whitelist` — Violation whitelist (player names, LOG_ONLY mode)
-- `web_dashboard` — Built-in web monitoring panel (port, password, locale)
+All checks respect `antilitematica.bypass` and auto-exempt Geyser Bedrock players.
 
 ---
 
 ## Web Dashboard
 
-AntiLitematica includes a built-in web-based monitoring dashboard — no additional web server required.
+Built-in monitoring panel — no extra web server needed.
 
-### Access
+```yaml
+web_dashboard:
+  enabled: true
+  port: 25418
+  password: "your_password"
+```
 
-1. Enable the dashboard in `config.yml`:
-   ```yaml
-   web_dashboard:
-     enabled: true
-     port: 25418
-     password: "your_password"
-     locale: "zh_CN"   # zh_CN / en_US / zh_TW
-   ```
-2. Restart or `/al reload`
-3. Open `http://<your-server-ip>:25418` in your browser
-4. Enter the password configured above
+Open `http://<your-server-ip>:25418` in your browser.
 
-### Dashboard Features
+Features: server overview, player list, violation records, quick settings, multi-language.
 
-- **📊 Overview** — Server TPS, online players, detection/punishment counts, plugin status
-- **👤 Players** — Real-time online player list with ping, gamemode, violation count; reset player violations
-- **⚠️ Violations** — View and clear violation records
-- **⚙️ Quick Settings** — Toggle detection, anti-printer, and webhook on/off
-- **🌐 Multi-Language** — Switch between 简体中文, English, and 繁體中文
+Full guide: [wiki/WEB_DASHBOARD.md](wiki/WEB_DASHBOARD.md)
+
+---
+
+## API for Developers
+
+AntiLitematica provides a public API for other plugins:
+
+```java
+AntiLitematicaAPI api = AntiLitematicaAPI.getInstance();
+int violations = api.getViolationCount(player.getUniqueId());
+api.triggerDetection(player, "servux:litematics", "custom check");
+```
+
+Events: `DetectionEvent` (cancellable), `PunishmentEvent`.
+
+Full reference: [docs/API.md](docs/API.md)
+
+---
+
+## Building from Source
+
+```bash
+git clone https://github.com/ALingqing/AntiLitematica.git
+cd AntiLitematica
+mvn clean package
+# Output: target/AntiLitematica-<version>.jar
+```
 
 ---
 
 ## Compatibility
 
-- **Server software:** Paper, Spigot, Purpur (1.12.2+)
-- **Java:** 8+
-- **Geyser/Floodgate:** Fully supported, Bedrock players auto-exempted
+- **Server:** Paper, Spigot, Purpur (1.12.2+)
+- **Java:** 8+ (21+ recommended)
+- **Geyser/Floodgate:** Fully supported
 
 ---
 
-## Support
+## bStats
 
-For bug reports, feature requests, or general support, please use the discussion section below.
+[![bStats](https://bstats.org/signatures/bukkit/AntiLitematica.svg)](https://bstats.org/plugin/bukkit/AntiLitematica/31012)
+
+Anonymous usage statistics. Disable in `config.yml`:
+```yaml
+bstats:
+  enabled: false
+```
+
+---
+
+## License
 
 > By using this plugin you agree to anonymous bStats metrics collection. You can disable this in the configuration.

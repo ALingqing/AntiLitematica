@@ -9,6 +9,8 @@ import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 
 import top.chenray.antilitematica.AntiLitematicaPlugin;
+import top.chenray.antilitematica.api.event.DetectionEvent;
+import top.chenray.antilitematica.api.event.PunishmentEvent;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.punish.hook.AdvancedBanHook;
 import top.chenray.antilitematica.punish.hook.BanPluginHook;
@@ -66,6 +68,17 @@ public final class GraduatedPunisher {
    }
 
    public void punish(Player player, String channel, String why) {
+      // ---- Fire DetectionEvent (cancellable) ----
+      DetectionEvent detectionEvent = new DetectionEvent(player,
+            channel != null ? channel : "graduated",
+            why != null ? why : "graduated punishment",
+            DetectionEvent.DetectionType.CHANNEL);
+      Bukkit.getPluginManager().callEvent(detectionEvent);
+      if (detectionEvent.isCancelled()) {
+         this.plugin.getLogger().info("[API] Graduated detection cancelled by event for " + player.getName());
+         return;
+      }
+
       // ---- Whitelist check ----
       if (isWhitelisted(player)) {
          this.plugin.getLogger().info("[GraduatedPunish][Whitelist] " + player.getName()
@@ -142,6 +155,16 @@ public final class GraduatedPunisher {
 
       // Discord notification
       sendDiscordNotification(player, channel, why, actionName, reason);
+
+      // ---- Fire PunishmentEvent ----
+      try {
+         PunishmentEvent.PunishmentAction pa = PunishmentEvent.PunishmentAction.valueOf(actionName);
+         PunishmentEvent punishmentEvent = new PunishmentEvent(
+               player, channel, reason, pa, record.count(), "graduated");
+         Bukkit.getPluginManager().callEvent(punishmentEvent);
+      } catch (Exception ignored) {
+         // event listener errors must not break punishment
+      }
    }
 
    public void reload() {

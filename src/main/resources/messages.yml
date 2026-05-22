@@ -99,3 +99,15 @@ input:
 status:
   enabled: "&a开启"
   disabled: "&c关闭"
+
+# Auto-update messages
+auto_update:
+  not_configured: "&c自动更新未配置，请在 config.yml 中设置 output_path"
+  checking: "&e正在检查 GitHub 更新..."
+  up_to_date: "&a已是最新版本 (v{current})"
+  new_version: "&e发现新版本: v{version}（当前: v{current}），开始下载..."
+  downloading: "&e正在下载 v{version}..."
+  success: "&a成功下载 v{version}！"
+  apply_hint: "&7运行 &e/plugman reload AntiLitematica &7或重启服务器以生效"
+  failed: "&c下载失败，请查看控制台日志"
+  nightly_scheduled: "&a夜间自动更新已设置于 {time}"
