@@ -24,6 +24,12 @@ public final class IntegrationManager {
          case "grimac":
             this.integration = new GrimACIntegration(this.plugin);
             break;
+         case "vulcan":
+            this.integration = new VulcanIntegration(this.plugin);
+            break;
+         case "matrix":
+            this.integration = new MatrixIntegration(this.plugin);
+            break;
          case "none":
          default:
             this.integration = new NoOpIntegration();

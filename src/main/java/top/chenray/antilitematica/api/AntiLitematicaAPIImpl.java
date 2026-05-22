@@ -58,6 +58,12 @@ public final class AntiLitematicaAPIImpl implements AntiLitematicaAPI {
     }
 
     @Override
+    public boolean isGraduatedPunishmentEnabled() {
+        Settings s = plugin.settings();
+        return s != null && s.graduatedPunishment() != null && s.graduatedPunishment().enabled();
+    }
+
+    @Override
     public @NotNull String getPluginVersion() {
         return plugin.getDescription().getVersion();
     }
@@ -261,5 +267,18 @@ public final class AntiLitematicaAPIImpl implements AntiLitematicaAPI {
         var mgr = plugin.getAutoBuildManager();
         if (mgr == null) return CompletableFuture.completedFuture(false);
         return mgr.downloadLatestAsync();
+    }
+
+    @Override
+    public boolean isDetectionLogEnabled() {
+        return plugin.getDetectionLogger() != null;
+    }
+
+    @Override
+    public @NotNull String getStorageType() {
+        var gp = plugin.settings().graduatedPunishment();
+        if (gp == null || !gp.enabled()) return "none";
+        String st = gp.storage();
+        return st != null ? st : "memory";
     }
 }

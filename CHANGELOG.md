@@ -12,12 +12,21 @@
   - Violation records viewer with clear action
   - Quick settings toggles (detection, anti-printer, webhook)
   - Multi-language UI: **简体中文** / **English** / **繁體中文**
+- **Public API** — `AntiLitematicaAPI` interface with static singleton and Bukkit ServicesManager registration. `DetectionEvent` (cancellable) and `PunishmentEvent` for external plugin integration.
+- **Auto GitHub Release Download** — Download latest plugin JAR directly from GitHub Releases via `/al build` (manual) or nightly schedule. Auto-detects plugins folder if `output_path` is empty.
+- **MySQL Storage** — Violation records can now be stored in MySQL/MariaDB (`storage: mysql`). Includes configurable host, port, database, user, password.
+- **Detection Log File** — Dedicated `detections.log` with daily date rotation. Capture every detection event in a separate file for auditing.
+- **Config Auto-Migration** — `config.yml` is automatically updated with new default sections when upgrading, preserving existing settings. Tracks version via `config_version`.
+- **Vulcan & Matrix Integration** — Reflection-based anti-cheat integration for Vulcan and Matrix (no compile-time dependency required, auto-detected at runtime).
 
 ### 🔧 Improvements
 
 - **Standard Maven Project Layout** — Source files moved from `top/` to `src/main/java/top/`, resources moved to `src/main/resources/`, removed custom `<sourceDirectory>` from `pom.xml`.
 - **Locale-Aware Messages** — Added `locale` config option (`zh_CN` / `en_US` / `zh_TW`). Plugin loads `messages_{locale}.yml` with fallback to `messages.yml`.
 - **GitHub Repository** — Updated update checker URL to `ALingqing/AntiLitematica`.
+- **Documentation Structure** — Added `docs/` (API reference, architecture, contributing) and `wiki/` (install, config, commands, FAQ, web dashboard) with full documentation.
+- **README Rewrite** — Streamlined with quick-start, feature icons, and links to all documentation.
+- **Removed Outdated META-INF** — Deleted manually-maintained `src/main/resources/META-INF/` (Maven auto-generates these files).
 
 ### 🐛 Bug Fixes
 
@@ -26,4 +35,5 @@
 
 ### 📦 Dependency Changes
 
-- No new dependencies added. Web dashboard uses JDK built-in `com.sun.net.httpserver.HttpServer`.
+- No new dependencies added. Vulcan/Matrix integrations use runtime reflection.
+- MySQL support requires MySQL Connector/J on the server classpath (not bundled).

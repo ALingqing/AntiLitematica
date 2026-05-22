@@ -11,6 +11,7 @@ import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
 
 import top.chenray.antilitematica.cmd.AntiLitematicaCommand;
+import top.chenray.antilitematica.config.ConfigMigrator;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.detection.ModChannelDetector;
 import top.chenray.antilitematica.gui.ConfigGui;
@@ -28,6 +29,7 @@ import top.chenray.antilitematica.threshold.DynamicThresholdManager;
 import top.chenray.antilitematica.api.AntiLitematicaAPIImpl;
 import top.chenray.antilitematica.build.AutoBuildManager;
 import top.chenray.antilitematica.update.UpdateChecker;
+import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.web.DashboardServer;
 
 public final class AntiLitematicaPlugin extends JavaPlugin {
@@ -47,6 +49,7 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private UpdateChecker updateChecker;
    private DashboardServer dashboardServer;
    private AutoBuildManager autoBuildManager;
+   private DetectionLogger detectionLogger;
 
    public void onEnable() {
       // Fancy startup ASCII art
@@ -58,6 +61,8 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
               "  ██║  ██║██║ ╚████║   ██║   ██║███████╗██║   ██║   ███████╗██║ ╚═╝ ██║██║  ██║   ██║   ██║██║  ██╗██║  ██║  \n" +
               "  ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚══════╝╚═╝   ╚═╝   ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝  \n");
       this.getLogger().info("AntiLitematica enabled | Author: ALingqing_ | Version: " + this.getDescription().getVersion());
+      // Auto-migrate old config files to include new default sections
+      new ConfigMigrator(this).migrate();
       this.saveDefaultConfig();
       this.saveResource("messages.yml", false);
       this.guiInputManager = new GuiInputManager(this);
@@ -102,6 +107,11 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          this.autoBuildManager.start();
       }
 
+      // ---- Detection Logger ----
+      boolean logEnabled = this.getConfig().getBoolean("detection_log.enabled", false);
+      String logFile = this.getConfig().getString("detection_log.file", "detections.log");
+      this.detectionLogger = new DetectionLogger(this, logEnabled, logFile);
+
       // ---- Register API ----
       AntiLitematicaAPIImpl api = new AntiLitematicaAPIImpl(this);
       AntiLitematicaAPIImpl.INSTANCE = api;
@@ -140,6 +150,10 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
       if (this.updateChecker != null) {
          // UpdateChecker listeners auto-cleaned by HandlerList
+      }
+
+      if (this.detectionLogger != null) {
+         this.detectionLogger.close();
       }
 
       if (this.autoBuildManager != null) {
@@ -207,8 +221,15 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          this.commandGuard = new CommandGuard(this, this.settings);
          this.commandGuard.start();
          if (this.settings.graduatedPunishment() != null && this.settings.graduatedPunishment().enabled()) {
-            boolean useSqlite = "sqlite".equals(this.settings.graduatedPunishment().storage());
-            this.punishmentTracker = new PunishmentTracker(this, useSqlite, this.settings.graduatedPunishment().windowMinutes());
+            Settings.GraduatedPunishment gp = this.settings.graduatedPunishment();
+            String storage = gp.storage();
+            if ("mysql".equals(storage)) {
+               this.punishmentTracker = new PunishmentTracker(this, storage, gp.windowMinutes(),
+                     gp.mysqlHost(), gp.mysqlPort(), gp.mysqlDatabase(),
+                     gp.mysqlUser(), gp.mysqlPassword());
+            } else {
+               this.punishmentTracker = new PunishmentTracker(this, storage, gp.windowMinutes());
+            }
             this.graduatedPunisher = new GraduatedPunisher(this, this.settings, this.punishmentTracker);
          }
       }
@@ -261,5 +282,9 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
    public AutoBuildManager getAutoBuildManager() {
       return this.autoBuildManager;
+   }
+
+   public DetectionLogger getDetectionLogger() {
+      return this.detectionLogger;
    }
 }

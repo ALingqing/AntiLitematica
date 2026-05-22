@@ -14,6 +14,7 @@ import top.chenray.antilitematica.AntiLitematicaPlugin;
 import top.chenray.antilitematica.api.event.DetectionEvent;
 import top.chenray.antilitematica.api.event.PunishmentEvent;
 import top.chenray.antilitematica.config.Settings;
+import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.util.DiscordWebhook;
 import top.chenray.antilitematica.util.Msg;
 
@@ -102,6 +103,12 @@ public final class Punisher {
          }
 
          sendDiscordNotification(plugin, settings, player, channel, why, actionName, punishExecuted);
+
+         // ---- Detection Log ----
+         DetectionLogger detLog = plugin.getDetectionLogger();
+         if (detLog != null) {
+            detLog.log(player.getName(), player.getUniqueId().toString(), channel, reason, actionName, why);
+         }
 
          // ---- Fire PunishmentEvent ----
          try {

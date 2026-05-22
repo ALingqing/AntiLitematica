@@ -55,6 +55,7 @@ Then shade or compile against the plugin JAR.
 | `isDetectionEnabled()` | `boolean` | Whether detection system is active |
 | `isAntiPrinterEnabled()` | `boolean` | Whether anti-printer is active |
 | `isCommandGuardEnabled()` | `boolean` | Whether command guard is active |
+| `isGraduatedPunishmentEnabled()` | `boolean` | Whether graduated punishment is enabled |
 | `getPluginVersion()` | `String` | Current plugin version string |
 
 ### Player State
@@ -113,6 +114,20 @@ Then shade or compile against the plugin JAR.
 |--------|--------|-------------|
 | `isAutoUpdateEnabled()` | `boolean` | Whether auto-update is configured |
 | `triggerAutoUpdate()` | `CompletableFuture<Boolean>` | Trigger download of latest release from GitHub |
+
+### Detection Log
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `isDetectionLogEnabled()` | `boolean` | Whether detection log file is enabled |
+
+---
+
+### Storage Type
+
+| Method | Return | Description |
+|--------|--------|-------------|
+| `getStorageType()` | `String` | `sqlite`, `mysql`, or `memory` |
 
 ---
 
@@ -253,3 +268,19 @@ public class MyIntegration extends JavaPlugin implements Listener {
 
 Plugin ID: `31012`  
 View metrics: [https://bstats.org/plugin/bukkit/AntiLitematica/31012](https://bstats.org/plugin/bukkit/AntiLitematica/31012)
+
+---
+
+## Changelog (API)
+
+### v5.0.0
+- Initial public API release
+- `AntiLitematicaAPI` interface + static singleton
+- `DetectionEvent` (cancellable) + `PunishmentEvent` (post-execution)
+- Bukkit ServicesManager registration
+
+### v5.0.0+ (this version)
+- Added `isGraduatedPunishmentEnabled()`
+- Added `isDetectionLogEnabled()`
+- Added `getStorageType()`
+- Added `isCommandGuardEnabled()`

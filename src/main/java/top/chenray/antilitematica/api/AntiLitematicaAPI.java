@@ -60,6 +60,11 @@ public interface AntiLitematicaAPI {
     boolean isCommandGuardEnabled();
 
     /**
+     * Check if graduated punishment is enabled.
+     */
+    boolean isGraduatedPunishmentEnabled();
+
+    /**
      * Get the current plugin version.
      */
     @NotNull
@@ -206,4 +211,21 @@ public interface AntiLitematicaAPI {
      * Returns a CompletableFuture that completes with true if a new version was downloaded.
      */
     java.util.concurrent.CompletableFuture<Boolean> triggerAutoUpdate();
+
+    // ==================== Detection Log ====================
+
+    /**
+     * Check if the dedicated detection log file is enabled.
+     */
+    boolean isDetectionLogEnabled();
+
+    // ==================== Storage ====================
+
+    /**
+     * Get the current violation storage type.
+     *
+     * @return "sqlite", "mysql", or "memory"
+     */
+    @NotNull
+    String getStorageType();
 }

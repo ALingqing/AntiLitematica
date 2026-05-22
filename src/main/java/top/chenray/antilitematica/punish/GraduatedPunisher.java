@@ -17,6 +17,7 @@ import top.chenray.antilitematica.punish.hook.BanPluginHook;
 import top.chenray.antilitematica.punish.hook.EssentialsHook;
 import top.chenray.antilitematica.punish.hook.LiteBansHook;
 import top.chenray.antilitematica.punish.hook.NoOpBanHook;
+import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.util.DiscordWebhook;
 import top.chenray.antilitematica.util.Msg;
 
@@ -155,6 +156,13 @@ public final class GraduatedPunisher {
 
       // Discord notification
       sendDiscordNotification(player, channel, why, actionName, reason);
+
+      // ---- Detection Log ----
+      DetectionLogger detLog = this.plugin.getDetectionLogger();
+      if (detLog != null) {
+         detLog.log(player.getName(), player.getUniqueId().toString(), channel, reason, actionName,
+               "graduated level=" + level + " count=" + record.count());
+      }
 
       // ---- Fire PunishmentEvent ----
       try {

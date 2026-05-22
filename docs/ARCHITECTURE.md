@@ -16,17 +16,20 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 │ Detection│  Guards  │Punishment│Integration│   Web/Utility   │
 ├──────────┼──────────┼──────────┼──────────┼──────────────────┤
 │ModChannel│Placement │Punisher  │GrimAC    │  DashboardServer │
-│Detector  │Guard     │          │          │                  │
-│          │          │Graduated │NoOp      │  DiscordWebhook  │
-│Protocol  │Command   │Punisher  │          │                  │
+│Detector  │Guard     │          │Vulcan    │                  │
+│          │          │Graduated │Matrix    │  DiscordWebhook  │
+│Protocol  │Command   │Punisher  │NoOp      │                  │
 │LibBridge │Guard     │          │          │  UpdateChecker   │
 │          │          │Punishment│          │                  │
 │          │          │Tracker   │          │  AutoBuildManager│
+│          │          │          │          │                  │
+│          │          │          │          │  DetectionLogger │
+│          │          │          │          │  ConfigMigrator  │
 └──────────┴──────────┴──────────┴──────────┴──────────────────┘
          │            │          │                    │
          ▼            ▼          ▼                    ▼
-     Bukkit Events   Scheduler   SQLite/       HTTP Server
-     ProtocolLib     API         Memory         GitHub API
+     Bukkit Events   Scheduler   SQLite/MySQL/   HTTP Server
+     ProtocolLib     API         Memory           GitHub API
 ```
 
 ---
@@ -93,8 +96,9 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 #### `PunishmentTracker`
 - **Package:** `top.chenray.antilitematica.punish`
 - **Purpose:** Stores violation records
-- **Storage:** SQLite (file) or in-memory
+- **Storage:** SQLite (file), MySQL/MariaDB, or in-memory
 - **Data:** UUID, player name, count, first/last violation timestamps, total violations
+- **MySQL Config:** Host, port, database, user, password in `graduated_punishment.mysql`
 - **Cleanup:** Automatic cleanup of expired records every 24 hours
 
 ### 4. Integration Layer
@@ -104,6 +108,8 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 - **Purpose:** Bridges AntiLitematica detections to anti-cheat plugins
 - **Adapters:**
   - `GrimACIntegration` — Feeds violations into GrimAC
+  - `VulcanIntegration` — Reflection-based Vulcan integration
+  - `MatrixIntegration` — Reflection-based Matrix integration
   - `NoOpIntegration` — No-op fallback
 
 ### 5. API Layer
@@ -126,7 +132,18 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 #### `AutoBuildManager`
 - **Package:** `top.chenray.antilitematica.build`
 - **Purpose:** Downloads latest release JAR from GitHub Releases
+- **Auto-detect:** Automatically finds plugins folder if `output_path` is empty
 - **Trigger:** Nightly schedule or `/al build` command
+
+#### `DetectionLogger`
+- **Package:** `top.chenray.antilitematica.util`
+- **Purpose:** Writes detection events to a dedicated `detections.log` file
+- **Rotation:** Daily date-based auto-rotation
+
+#### `ConfigMigrator`
+- **Package:** `top.chenray.antilitematica.config`
+- **Purpose:** Auto-migrates old `config.yml` to add new default sections
+- **Versioning:** `config_version` field tracks migration state
 
 #### `UpdateChecker`
 - **Package:** `top.chenray.antilitematica.update`

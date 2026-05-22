@@ -121,13 +121,19 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
       if (banPlugins.isEmpty()) {
          banPlugins = List.of("LiteBans", "AdvancedBan", "EssentialsX");
       }
+      ConfigurationSection mysql = section(gp, "mysql");
       GraduatedPunishment graduatedPunishment = new GraduatedPunishment(
             gp.getBoolean("enabled", true),
             gp.getLong("window_minutes", 60),
             gp.getString("storage", "sqlite").toLowerCase(Locale.ROOT),
             levels,
             exceedMax,
-            banPlugins
+            banPlugins,
+            mysql.getString("host", "localhost"),
+            mysql.getInt("port", 3306),
+            mysql.getString("database", "antilitematica"),
+            mysql.getString("user", "root"),
+            mysql.getString("password", "")
       );
 
       // ---- Auto Build / Update ----
@@ -238,7 +244,14 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
    public static record CommandGuard(boolean enabled, Set<String> blockedCommands, int maxPerWindow, long windowMs, Violations violations) {
    }
 
-   public static record GraduatedPunishment(boolean enabled, long windowMinutes, String storage, List<PunishmentLevel> levels, PunishmentLevel exceedMax, List<String> banPlugins) {
+   public static record GraduatedPunishment(
+      boolean enabled, long windowMinutes, String storage,
+      List<PunishmentLevel> levels, PunishmentLevel exceedMax, List<String> banPlugins,
+      String mysqlHost, int mysqlPort, String mysqlDatabase, String mysqlUser, String mysqlPassword
+   ) {
+      public boolean isMysql() {
+         return "mysql".equalsIgnoreCase(storage());
+      }
    }
 
    public static record PunishmentLevel(String action, String duration, String reason, boolean broadcast, boolean staffAlert) {

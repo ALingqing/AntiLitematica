@@ -230,9 +230,16 @@ public final class AutoBuildManager {
         }
 
         String outputPath = cfg.outputPath();
+
+        // Auto-detect plugins folder if output_path is empty
         if (outputPath == null || outputPath.isEmpty()) {
-            plugin.getLogger().warning("AutoUpdate: output_path is not configured in config.yml.");
-            return false;
+            outputPath = autoDetectPluginsFolder();
+            if (outputPath == null) {
+                plugin.getLogger().warning("AutoUpdate: output_path is not configured and could not auto-detect plugins folder.");
+                plugin.getLogger().info("AutoUpdate: Set 'output_path' in config.yml or ensure the plugin is in a standard Paper/Spigot server setup.");
+                return false;
+            }
+            plugin.getLogger().info("AutoUpdate: Auto-detected plugins folder: " + outputPath);
         }
 
         File outputDir = new File(outputPath);
@@ -445,6 +452,50 @@ public final class AutoBuildManager {
         int end = json.indexOf("\"", start);
         if (end < 0) return null;
         return json.substring(start, end);
+    }
+
+    /**
+     * Auto-detect the server's plugins folder by checking common paths.
+     * Returns the detected path, or null if not found.
+     */
+    private String autoDetectPluginsFolder() {
+        // The plugin's data folder is typically: ./plugins/AntiLitematica/
+        // So the parent's parent should be the server root
+        File dataFolder = plugin.getDataFolder(); // ./plugins/AntiLitematica/
+        if (dataFolder != null) {
+            File parent = dataFolder.getParentFile(); // ./plugins/
+            if (parent != null && parent.exists() && parent.isDirectory()) {
+                // Double-check: this folder should contain .jar files
+                File[] jars = parent.listFiles((d, n) -> n.endsWith(".jar"));
+                if (jars != null && jars.length > 0) {
+                    return parent.getAbsolutePath();
+                }
+            }
+            // Try parent of parent (server root) + /plugins
+            File grandParent = dataFolder.getParentFile() != null
+                    ? dataFolder.getParentFile().getParentFile() : null;
+            if (grandParent != null) {
+                File pluginsDir = new File(grandParent, "plugins");
+                if (pluginsDir.exists() && pluginsDir.isDirectory()) {
+                    File[] jars = pluginsDir.listFiles((d, n) -> n.endsWith(".jar"));
+                    if (jars != null && jars.length > 0) {
+                        return pluginsDir.getAbsolutePath();
+                    }
+                }
+            }
+        }
+        // Last resort: check common relative paths
+        String[] candidates = { "plugins", "../plugins", "./plugins" };
+        for (String path : candidates) {
+            File dir = new File(path);
+            if (dir.exists() && dir.isDirectory()) {
+                File[] jars = dir.listFiles((d, n) -> n.endsWith(".jar"));
+                if (jars != null && jars.length > 0) {
+                    return dir.getAbsolutePath();
+                }
+            }
+        }
+        return null;
     }
 
     /**

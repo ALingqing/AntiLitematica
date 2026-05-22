@@ -135,13 +135,8 @@ public final class AntiLitematicaCommand implements CommandExecutor {
    }
 
    private boolean handleBuild(CommandSender sender) {
-      Settings.AutoBuild ab = this.plugin.settings().autoBuild();
-      if (ab == null || !ab.enabled()) {
-         sender.sendMessage(ChatColor.RED + "Auto-update is not enabled in config.yml.");
-         return true;
-      }
-      if (ab.outputPath() == null || ab.outputPath().isEmpty()) {
-         sender.sendMessage(ChatColor.RED + "Auto-update output_path is not configured.");
+      if (this.plugin.getAutoBuildManager() == null) {
+         sender.sendMessage(ChatColor.RED + "Auto-update manager not available.");
          return true;
       }
       sender.sendMessage(ChatColor.GRAY + "Checking for updates on GitHub...");

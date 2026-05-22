@@ -1,6 +1,15 @@
 # AntiLitematica Configuration
+# Config version (auto-managed by ConfigMigrator, do not edit)
+config_version: 2
 
 enabled: true
+
+# Detection log file (separate from server console log)
+# Writes detection events to a date-rotated log file in the plugin folder
+detection_log:
+  enabled: false
+  # File name (relative to plugin data folder, supports date rotation)
+  file: "detections.log"
 
 # bStats metrics (plugin usage statistics)
 bstats:
@@ -145,8 +154,19 @@ graduated_punishment:
   # Time window (minutes) for counting violations
   window_minutes: 60
 
-  # Storage: sqlite / memory
+  # Storage: sqlite / mysql / memory
+  # sqlite: stores data in violations.db file (default)
+  # mysql: stores data in MySQL/MariaDB database (requires mysql section below)
+  # memory: stores data in RAM (lost on restart, for testing only)
   storage: sqlite
+
+  # MySQL configuration (only used when storage: mysql)
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "antilitematica"
+    user: "root"
+    password: ""
 
   # Punishment levels (executed in order based on violation count)
   levels:
@@ -184,7 +204,10 @@ graduated_punishment:
 # Anti-cheat integration settings
 integration:
   enabled: false
-  # Options: grim / none
+  # Options: grim / vulcan / matrix / none
+  # grim: GrimAC (built-in API)
+  # vulcan: Vulcan (reflection-based, requires Vulcan on server)
+  # matrix: Matrix (reflection-based, requires Matrix on server)
   type: "none"
   violation_level: 10
   check_prefix: "AntiLitematica"

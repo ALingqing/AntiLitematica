@@ -10,6 +10,7 @@ import java.sql.Statement;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Map;
+import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -18,48 +19,103 @@ import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
 
 /**
- * Manages violation records using SQLite or in-memory storage.
+ * Manages violation records using SQLite, MySQL, or in-memory storage.
  */
 public final class PunishmentTracker {
    private final Plugin plugin;
-   private final boolean useSqlite;
+   private final String storageType; // "sqlite", "mysql", "memory"
    private final long windowMinutes;
    private Connection connection;
    private final Map<UUID, ViolationRecord> memoryCache = new ConcurrentHashMap<>();
 
-   public PunishmentTracker(Plugin plugin, boolean useSqlite, long windowMinutes) {
-      this.plugin = plugin;
-      this.useSqlite = useSqlite;
-      this.windowMinutes = Math.max(1, windowMinutes);
-      if (this.useSqlite) {
-         this.initSqlite();
-      }
+   // MySQL config
+   private final String mysqlHost;
+   private final int mysqlPort;
+   private final String mysqlDatabase;
+   private final String mysqlUser;
+   private final String mysqlPassword;
+
+   public PunishmentTracker(Plugin plugin, String storageType, long windowMinutes) {
+      this(plugin, storageType, windowMinutes, null, 0, null, null, null);
    }
 
-   private void initSqlite() {
+   public PunishmentTracker(Plugin plugin, String storageType, long windowMinutes,
+                            String mysqlHost, int mysqlPort, String mysqlDatabase,
+                            String mysqlUser, String mysqlPassword) {
+      this.plugin = plugin;
+      this.storageType = storageType != null ? storageType.toLowerCase() : "memory";
+      this.windowMinutes = Math.max(1, windowMinutes);
+      this.mysqlHost = mysqlHost;
+      this.mysqlPort = mysqlPort;
+      this.mysqlDatabase = mysqlDatabase;
+      this.mysqlUser = mysqlUser;
+      this.mysqlPassword = mysqlPassword;
+      initDatabase();
+   }
+
+   private void initDatabase() {
       try {
-         File dataFolder = this.plugin.getDataFolder();
-         if (!dataFolder.exists()) {
-            dataFolder.mkdirs();
-         }
-         File dbFile = new File(dataFolder, "violations.db");
-         this.connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
-         try (Statement stmt = this.connection.createStatement()) {
-            stmt.execute("CREATE TABLE IF NOT EXISTS violations ("
-                  + "uuid TEXT PRIMARY KEY,"
-                  + "player_name TEXT,"
-                  + "count INTEGER DEFAULT 0,"
-                  + "first_violation INTEGER,"
-                  + "last_violation INTEGER,"
-                  + "total_violations INTEGER DEFAULT 0"
-                  + ")");
+         switch (storageType) {
+            case "sqlite":
+               initSqlite();
+               break;
+            case "mysql":
+               initMysql();
+               break;
+            default:
+               plugin.getLogger().info("Violation storage: memory (data lost on restart)");
+               return;
          }
          // Schedule cleanup every 24 hours
          Bukkit.getScheduler().runTaskTimerAsynchronously(this.plugin, this::cleanupOldRecords,
                20L * 60L * 60L * 24L, 20L * 60L * 60L * 24L);
-      } catch (SQLException e) {
-         this.plugin.getLogger().severe("Failed to initialize SQLite: " + e.getMessage());
+      } catch (Exception e) {
+         this.plugin.getLogger().severe("Failed to initialize " + storageType + ": " + e.getMessage());
       }
+   }
+
+   private void initSqlite() throws SQLException {
+      File dataFolder = this.plugin.getDataFolder();
+      if (!dataFolder.exists()) {
+         dataFolder.mkdirs();
+      }
+      File dbFile = new File(dataFolder, "violations.db");
+      this.connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
+      try (Statement stmt = this.connection.createStatement()) {
+         stmt.execute("CREATE TABLE IF NOT EXISTS violations ("
+               + "uuid TEXT PRIMARY KEY,"
+               + "player_name TEXT,"
+               + "count INTEGER DEFAULT 0,"
+               + "first_violation INTEGER,"
+               + "last_violation INTEGER,"
+               + "total_violations INTEGER DEFAULT 0"
+               + ")");
+      }
+      plugin.getLogger().info("Violation storage: SQLite (" + dbFile.getAbsolutePath() + ")");
+   }
+
+   private void initMysql() throws SQLException, ClassNotFoundException {
+      Class.forName("com.mysql.cj.jdbc.Driver");
+      String url = "jdbc:mysql://" + mysqlHost + ":" + mysqlPort + "/" + mysqlDatabase
+            + "?useSSL=false&characterEncoding=utf8&serverTimezone=UTC";
+      Properties props = new Properties();
+      props.setProperty("user", mysqlUser);
+      if (mysqlPassword != null && !mysqlPassword.isEmpty()) {
+         props.setProperty("password", mysqlPassword);
+      }
+      this.connection = DriverManager.getConnection(url, props);
+
+      try (Statement stmt = this.connection.createStatement()) {
+         stmt.execute("CREATE TABLE IF NOT EXISTS violations ("
+               + "uuid VARCHAR(36) PRIMARY KEY,"
+               + "player_name VARCHAR(64),"
+               + "count INT DEFAULT 0,"
+               + "first_violation BIGINT,"
+               + "last_violation BIGINT,"
+               + "total_violations INT DEFAULT 0"
+               + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+      }
+      plugin.getLogger().info("Violation storage: MySQL (" + mysqlHost + ":" + mysqlPort + "/" + mysqlDatabase + ")");
    }
 
    /**
@@ -94,8 +150,12 @@ public final class PunishmentTracker {
       return this.loadRecord(uuid);
    }
 
+   private boolean hasDatabase() {
+      return !"memory".equals(storageType) && this.connection != null;
+   }
+
    public synchronized void resetPlayer(UUID uuid) {
-      if (this.useSqlite && this.connection != null) {
+      if (hasDatabase()) {
          try (PreparedStatement ps = this.connection.prepareStatement(
                "DELETE FROM violations WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
@@ -109,7 +169,7 @@ public final class PunishmentTracker {
 
    public synchronized List<ViolationRecord> getAllRecords() {
       List<ViolationRecord> list = new ArrayList<>();
-      if (this.useSqlite && this.connection != null) {
+      if (hasDatabase()) {
          try (Statement stmt = this.connection.createStatement();
               ResultSet rs = stmt.executeQuery("SELECT * FROM violations")) {
             while (rs.next()) {
@@ -154,7 +214,7 @@ public final class PunishmentTracker {
    }
 
    private ViolationRecord loadRecord(UUID uuid) {
-      if (this.useSqlite && this.connection != null) {
+      if (hasDatabase()) {
          try (PreparedStatement ps = this.connection.prepareStatement(
                "SELECT * FROM violations WHERE uuid = ?")) {
             ps.setString(1, uuid.toString());
@@ -171,7 +231,7 @@ public final class PunishmentTracker {
    }
 
    private void saveRecord(ViolationRecord record) {
-      if (this.useSqlite && this.connection != null) {
+      if (hasDatabase()) {
          try (PreparedStatement ps = this.connection.prepareStatement(
                "INSERT OR REPLACE INTO violations (uuid, player_name, count, first_violation, last_violation, total_violations) "
                      + "VALUES (?, ?, ?, ?, ?, ?)")) {
@@ -192,7 +252,7 @@ public final class PunishmentTracker {
 
    private void cleanupOldRecords() {
       long cutoff = System.currentTimeMillis() - (30L * 24L * 60L * 60L * 1000L);
-      if (this.useSqlite && this.connection != null) {
+      if (hasDatabase()) {
          try (PreparedStatement ps = this.connection.prepareStatement(
                "DELETE FROM violations WHERE last_violation < ?")) {
             ps.setLong(1, cutoff);

@@ -165,7 +165,12 @@ graduated_punishment:
 |--------|---------|-------------|
 | `enabled` | `true` | Enable graduated punishment |
 | `window_minutes` | `60` | Time window for violation counting |
-| `storage` | `sqlite` | Storage method: `sqlite` / `memory` |
+| `storage` | `sqlite` | Storage method: `sqlite` / `mysql` / `memory` |
+| `mysql.host` | `localhost` | MySQL server hostname |
+| `mysql.port` | `3306` | MySQL server port |
+| `mysql.database` | `antilitematica` | MySQL database name |
+| `mysql.user` | `root` | MySQL username |
+| `mysql.password` | `""` | MySQL password |
 | `levels.<n>.action` | — | Action: `warn`, `kick`, `tempban`, `ban` |
 | `levels.<n>.duration` | — | Ban duration (e.g. `30m`, `2h`, `7d`) |
 | `levels.<n>.reason` | — | Punishment reason (supports `%player%`, `%count%`, `%total%`) |
@@ -233,7 +238,7 @@ integration:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `false` | Enable anti-cheat integration |
-| `type` | `"none"` | Integration type: `none` or `grim` |
+| `type` | `"none"` | Integration type: `none`, `grim`, `vulcan`, or `matrix` |
 | `violation_level` | `10` | Violation level to report |
 | `check_prefix` | `"AntiLitematica"` | Check name prefix |
 
@@ -274,6 +279,21 @@ See [Web Dashboard Guide](WEB_DASHBOARD.md) for details.
 
 ---
 
+## Detection Log
+
+```yaml
+detection_log:
+  enabled: false
+  file: "detections.log"
+```
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| `enabled` | `false` | Enable dedicated detection log file |
+| `file` | `"detections.log"` | Log file name (relative to plugin folder, daily rotation) |
+
+---
+
 ## Auto Update
 
 ```yaml
@@ -288,7 +308,7 @@ auto_build:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `false` | Enable auto-update from GitHub Releases |
-| `output_path` | `""` | Server plugins folder path |
+| `output_path` | `""` | Server plugins folder path (auto-detected if empty) |
 | `nightly_time` | `"03:00"` | Nightly check time (24h format), empty to disable |
 | `auto_reload` | `false` | Run `/plugman reload AntiLitematica` after download |
 | `post_build_command` | `""` | Custom command after download (overrides auto_reload) |

@@ -1,52 +1,53 @@
-name: Build AntiLitematica
+name: Build & Release
 
 on:
   push:
     branches: [ "main", "master" ]
+    paths-ignore:
+      - 'wiki/**'
+      - 'docs/**'
+      - '**.md'
   pull_request:
     branches: [ "main", "master" ]
-  workflow_dispatch:  # 手动触发
+  release:
+    types: [ published ]
+  workflow_dispatch:
 
 jobs:
   build:
     runs-on: ubuntu-latest
+    permissions:
+      contents: write
 
     steps:
-    - name: Checkout repository
-      uses: actions/checkout@v4
+      - uses: actions/checkout@v4
 
-    - name: Set up JDK 21
-      uses: actions/setup-java@v4
-      with:
-        java-version: '21'
-        distribution: 'temurin'
-        cache: maven
+      - name: Set up JDK 21
+        uses: actions/setup-java@v4
+        with:
+          java-version: '21'
+          distribution: 'temurin'
+          cache: maven
 
-    # 确保 libs 目录存在（放置 VulcanAPI.jar 和 Matrix.jar）
-    - name: Prepare local dependencies
-      run: |
-        mkdir -p libs
-        ls -la libs/ || echo "libs directory is empty, ensure VulcanAPI.jar and Matrix.jar are committed"
+      - name: Build with Maven
+        run: mvn -B clean package --file pom.xml
 
-    - name: Build with Maven
-      run: mvn -B clean package --file pom.xml
+      - name: Upload build artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: AntiLitematica
+          path: target/AntiLitematica-*.jar
+          if-no-files-found: error
+          retention-days: 7
 
-    # 上传构建产物
-    - name: Upload JAR artifact
-      uses: actions/upload-artifact@v4
-      with:
-        name: AntiLitematica-Build
-        path: target/*.jar
-        retention-days: 7
-
-    # 可选：发布 Release（仅在打标签时）
-    - name: Release JAR
-      if: startsWith(github.ref, 'refs/tags/')
-      uses: softprops/action-gh-release@v1
-      with:
-        files: target/AntiLitematica-*.jar
-      env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+      - name: Upload to Release
+        if: github.event_name == 'release'
+        uses: softprops/action-gh-release@v2
+        with:
+          files: target/AntiLitematica-*.jar
+          generate_release_notes: true
+        env:
+          GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
     # 可选：依赖图提交（如不需要可删除）
     # - name: Update dependency graph
