@@ -1,6 +1,6 @@
 # Architecture
 
-> **Last updated:** v5.0.0
+> **Last updated:** v6.0.0
 
 AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/Schematica usage on Minecraft servers. This document describes the high-level architecture and module interactions.
 

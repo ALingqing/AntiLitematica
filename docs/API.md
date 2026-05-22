@@ -1,6 +1,6 @@
 # AntiLitematica API Documentation
 
-> **Version:** 5.0.0+  
+> **Version:** 6.0.0+  
 > **Package:** `top.chenray.antilitematica.api`
 
 Other plugins can integrate with AntiLitematica through the official API to query player states, trigger detections, manage whitelists, and listen to events.
