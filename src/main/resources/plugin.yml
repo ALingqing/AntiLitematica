@@ -1,6 +1,6 @@
 name: AntiLitematica
 main: top.chenray.antilitematica.AntiLitematicaPlugin
-version: 3.5.0
+version: 5.0.0
 api-version: '1.21'
 author: aqing
 depend: [ProtocolLib]

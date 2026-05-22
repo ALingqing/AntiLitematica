@@ -2,7 +2,7 @@
 
 **The ultimate Litematica / Schematica / Printer detection plugin for Paper/Spigot**
 
-![Version](https://img.shields.io/badge/version-4.0.0-blue) ![MC Version](https://img.shields.io/badge/1.12.2%2B-green) [![bStats](https://bstats.org/signatures/bukkit/AntiLitematica.svg)](https://bstats.org/plugin/bukkit/AntiLitematica/31012)
+![Version](https://img.shields.io/badge/version-3.5.0-blue) ![MC Version](https://img.shields.io/badge/1.12.2%2B-green) [![bStats](https://bstats.org/signatures/bukkit/AntiLitematica.svg)](https://bstats.org/plugin/bukkit/AntiLitematica/31012)
 
 ---
 
