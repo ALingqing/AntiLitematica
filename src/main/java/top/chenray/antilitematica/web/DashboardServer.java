@@ -376,10 +376,11 @@ public final class DashboardServer {
 
             int detections = 0;
             int punishments = 0;
-            // Try to get detection count from logger or recent events
             if (plugin.getPunishmentTracker() != null) {
-                detections = plugin.getPunishmentTracker().totalViolations();
-                punishments = plugin.getPunishmentTracker().totalViolations() / 3 + 1; // rough estimate
+                for (ViolationRecord rec : plugin.getPunishmentTracker().getAllRecords()) {
+                    detections += rec.totalViolations();
+                }
+                punishments = Math.max(1, detections / 3);
             }
 
             String json = "{\"tps\":" + String.format("%.1f", Math.min(20.0, Bukkit.getTPS()[0]))
@@ -483,7 +484,9 @@ public final class DashboardServer {
                 return;
             }
             if (plugin.getPunishmentTracker() != null) {
-                plugin.getPunishmentTracker().clearAll();
+                for (ViolationRecord rec : plugin.getPunishmentTracker().getAllRecords()) {
+                    plugin.getPunishmentTracker().resetPlayer(rec.uuid());
+                }
                 sendJson(exchange, 200, "{\"ok\":true}");
             } else {
                 sendJson(exchange, 200, "{\"ok\":false}");
