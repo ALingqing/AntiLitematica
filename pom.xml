@@ -116,12 +116,18 @@
 									<includes>
 										<include>**</include>
 									</includes>
+									<excludes>
+										<exclude>META-INF/MANIFEST.MF</exclude>
+									</excludes>
 								</filter>
 								<filter>
 									<artifact>org.bstats:bstats-base</artifact>
 									<includes>
 										<include>**</include>
 									</includes>
+									<excludes>
+										<exclude>META-INF/MANIFEST.MF</exclude>
+									</excludes>
 								</filter>
 							</filters>
                             <createDependencyReducedPom>false</createDependencyReducedPom>
