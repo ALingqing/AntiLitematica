@@ -3,6 +3,7 @@ package top.chenray.antilitematica.build;
 import java.io.File;
 import java.io.FileOutputStream;
 import java.io.InputStream;
+import java.net.URI;
 import java.net.HttpURLConnection;
 import java.net.URI;
 import java.net.URL;
@@ -360,7 +361,27 @@ public final class AutoBuildManager {
             // Also remove old version JARs
             cleanupOldJars(outputDir, jarName);
 
-            // Step 3: Post-download action (reload command)
+            // Step 3: Try to replace the running JAR
+            try {
+                File runningJar = new File(AutoBuildManager.class.getProtectionDomain()
+                        .getCodeSource().getLocation().toURI());
+                if (runningJar.exists() && runningJar.getName().endsWith(".jar")
+                        && !runningJar.getName().equals(jarName)) {
+                    // Backup old jar
+                    File backup = new File(runningJar.getParentFile(), runningJar.getName() + ".bak");
+                    java.nio.file.Files.move(runningJar.toPath(), backup.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    // Copy new jar
+                    java.nio.file.Files.copy(destFile.toPath(), runningJar.toPath(),
+                            java.nio.file.StandardCopyOption.REPLACE_EXISTING);
+                    plugin.getLogger().info("AutoUpdate: Replaced running JAR with " + jarName
+                            + " (backup: " + backup.getName() + ")");
+                }
+            } catch (Exception e) {
+                plugin.getLogger().info("AutoUpdate: Could not replace running JAR (expected if using PlugMan)");
+            }
+
+            // Step 4: Post-download action (reload command)
             String postCmd = cfg.postBuildCommand();
             if (postCmd != null && !postCmd.isEmpty()) {
                 plugin.getLogger().info("AutoUpdate: Executing post-update command: " + postCmd);

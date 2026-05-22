@@ -1,0 +1,102 @@
+# AntiLitematica Messages - English (US)
+# File: messages_en_US.yml
+
+prefix: "&7[&cAntiLitematica&7] "
+kick: "&cYou are not allowed to use Litematica / Printer (or its network fingerprint) on this server."
+blocked_place: "&cPlease aim at the block before placing (projection/printer placement is forbidden)."
+reload: "&aAntiLitematica configuration reloaded."
+
+# GUI Messages
+gui:
+  empty: "&7Click here? Nothing happens."
+  back: "&cBack to previous menu"
+  save: "&a&lSave & Reload"
+  current: "&7Current: &f"
+  click_edit: "&eClick to edit"
+  click_toggle: "&eClick to toggle"
+
+  main:
+    title: "&8AntiLitematica &7Config"
+    detection: "&aDetection Settings"
+    punishment: "&cPunishment Settings"
+    integration: "&6Anti-Cheat Integration"
+    webhook: "&bWebhook Settings"
+    printer: "&eAnti-Printer"
+    messages: "&dMessage Settings"
+    data: "&7Data Management"
+
+  detection:
+    title: "&8Detection Settings"
+    servux: "&eServux Metadata Detection"
+    easyplace: "&eEasyPlace Detection"
+    nbt: "&eNBT Query Detection"
+    channels: "&eDetection Channels"
+
+  punishment:
+    title: "&8Punishment Settings"
+    action: "&cPunishment Action"
+    reason: "&cBan Reason"
+    window: "&cTime Window"
+    levels: "&cPunishment Levels"
+
+  integration:
+    title: "&8Anti-Cheat Integration"
+    grim: "&aGrimAC"
+    vulcan: "&aVulcan"
+    matrix: "&aMatrix"
+    vl: "&eViolation Level"
+
+  webhook:
+    title: "&8Webhook Settings"
+    toggle: "&bToggle"
+    url: "&bSet URL"
+    trigger: "&bTrigger"
+    test: "&bTest"
+
+  printer:
+    title: "&8Anti-Printer Settings"
+    toggle: "&eToggle"
+    creative: "&eCreative Mode"
+    raytrace: "&eRaytrace"
+    rate: "&ePlace Rate"
+    reach: "&eReach"
+
+  messages:
+    title: "&8Message Settings"
+    prefix: "&dPrefix"
+    kick: "&dKick Message"
+    blocked: "&dBlocked Place Message"
+
+  data:
+    title: "&8Data Management"
+    reset: "&7Reset Player Record"
+    history: "&7View Player History"
+    clear: "&4Clear Expired Data"
+
+# Input prompts
+input:
+  webhook_url: "&eEnter Discord Webhook URL in chat\n&7Type &ccancel &7to cancel"
+  ban_reason: "&eEnter ban reason in chat\n&7Type &ccancel &7to cancel"
+  channel_list: "&eEnter channel list, comma-separated\n&7Type &ccancel &7to cancel"
+  player_name: "&eEnter player name in chat\n&7Type &ccancel &7to cancel"
+  cancel: "&cCancelled"
+  success: "&aSaved successfully!"
+  invalid_url: "&cInvalid URL format!"
+  timeout: "&cInput timed out, cancelled"
+
+# Status display
+status:
+  enabled: "&aEnabled"
+  disabled: "&cDisabled"
+
+# Auto-update messages
+auto_update:
+  not_configured: "&cAuto-update not configured. Set output_path in config.yml"
+  checking: "&eChecking GitHub for updates..."
+  up_to_date: "&aAlready up-to-date (v{current})"
+  new_version: "&eNew version found: v{version} (current: v{current}), downloading..."
+  downloading: "&eDownloading v{version}..."
+  success: "&aSuccessfully downloaded v{version}!"
+  apply_hint: "&7Run &e/plugman reload AntiLitematica &7or restart the server to apply"
+  failed: "&cDownload failed. Check server console for details."
+  nightly_scheduled: "&aNightly auto-update scheduled at {time}"

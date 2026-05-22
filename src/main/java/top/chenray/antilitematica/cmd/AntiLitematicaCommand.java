@@ -74,6 +74,8 @@ public final class AntiLitematicaCommand implements CommandExecutor {
             return handleImport(sender, args);
          case "testnotify":
             return handleTestNotify(sender);
+         case "kickall":
+            return handleKickAll(sender);
          case "whitelist":
             return handleWhitelist(sender, args);
          default:
@@ -263,6 +265,24 @@ public final class AntiLitematicaCommand implements CommandExecutor {
       } else {
          sender.sendMessage(ChatColor.GRAY + "Result: " + ChatColor.GREEN + sent + " succeeded"
                + ChatColor.GRAY + ", " + ChatColor.RED + failed + " failed");
+      }
+      return true;
+   }
+
+   private boolean handleKickAll(CommandSender sender) {
+      int kicked = 0;
+      for (Player p : Bukkit.getOnlinePlayers()) {
+         if (p.hasPermission("antilitematica.bypass")) continue;
+         if (this.plugin.isPunished(p.getUniqueId())) {
+            Bukkit.getScheduler().runTask(this.plugin, () -> {
+               p.kickPlayer(ChatColor.RED + "Kicked by admin (AntiLitematica batch)");
+            });
+            kicked++;
+         }
+      }
+      sender.sendMessage(ChatColor.GREEN + "Kicked " + kicked + " flagged players.");
+      if (this.plugin.getAuditLogger() != null) {
+         this.plugin.getAuditLogger().log("kickall", sender.getName(), kicked + " players kicked");
       }
       return true;
    }

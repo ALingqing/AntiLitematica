@@ -90,6 +90,11 @@ public final class ModChannelDetector implements Listener, PluginMessageListener
    }
 
    private void handleDetection(Player player, String channel, String why) {
+      // Check world whitelist
+      if (this.settings.worldWhitelist() != null
+            && this.settings.worldWhitelist().isWorldExempt(player.getWorld().getName())) {
+         return;
+      }
       if (!player.hasPermission("antilitematica.bypass") && this.plugin.markPunished(player.getUniqueId())) {
          Punisher.punishDetection(this.plugin, this.settings, player, channel, why);
       }

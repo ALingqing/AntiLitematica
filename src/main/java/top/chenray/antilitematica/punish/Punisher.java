@@ -18,6 +18,7 @@ import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.util.DiscordWebhook;
 import top.chenray.antilitematica.util.Msg;
 import top.chenray.antilitematica.util.OneBotNotifier;
+import top.chenray.antilitematica.util.StatsTracker;
 
 public final class Punisher {
    private Punisher() {
@@ -104,6 +105,13 @@ public final class Punisher {
          }
 
          sendDiscordNotification(plugin, settings, player, channel, why, actionName, punishExecuted);
+
+         // ---- Stats tracking ----
+         StatsTracker stats = plugin.getStatsTracker();
+         if (stats != null) {
+            stats.recordDetection();
+            if (punishExecuted) stats.recordPunishment();
+         }
 
          // ---- Detection Log ----
          DetectionLogger detLog = plugin.getDetectionLogger();

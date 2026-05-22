@@ -8,52 +8,60 @@ All commands use the base `/antilitematica` or its alias `/al`.
 
 | Command | Description | Permission |
 |---------|-------------|------------|
-| `/al reload` | Reload configuration from disk | `antilitematica.admin` |
-| `/al gui` | Open configuration GUI (in-game only) | `antilitematica.admin` |
-| `/al status` | View current plugin settings | `antilitematica.admin` |
-| `/al update` | Check for new versions on GitHub | `antilitematica.admin` |
-| `/al build` | Download latest release from GitHub | `antilitematica.admin` |
-| `/al reset <player>` | Reset violation record for a player | `antilitematica.admin` |
-| `/al history <player>` | View violation history for a player | `antilitematica.admin` |
-| `/al whitelist list` | List all whitelisted players | `antilitematica.admin` |
-| `/al whitelist add <player>` | Add a player to the whitelist | `antilitematica.admin` |
-| `/al whitelist remove <player>` | Remove a player from the whitelist | `antilitematica.admin` |
+| `/al reload` | Reload configuration from disk | antilitematica.admin |
+| `/al gui` | Open configuration GUI (in-game only) | antilitematica.admin |
+| `/al status` | View current plugin settings | antilitematica.admin |
+| `/al update` | Check for new versions on GitHub | antilitematica.admin |
+| `/al build` | Download latest release from GitHub | antilitematica.admin |
+| `/al reset <player\|all\|expired>` | Reset violation records | antilitematica.admin |
+| `/al history <player> [page]` | View violation history with pagination | antilitematica.admin |
+| `/al export` | Export violation records to JSON file | antilitematica.admin |
+| `/al import` | Import violation records from JSON file | antilitematica.admin |
+| `/al testnotify` | Test Discord webhook and OneBot QQ bot | antilitematica.admin |
+| `/al kickall` | Kick all currently flagged players | antilitematica.admin |
+| `/al whitelist list` | List all whitelisted players | antilitematica.admin |
+| `/al whitelist add <player>` | Add a player to the whitelist | antilitematica.admin |
+| `/al whitelist remove <player>` | Remove a player from the whitelist | antilitematica.admin |
 
 ### Command Details
 
 #### `/al reload`
-Reloads `config.yml` and `messages.yml` without restarting the server. All modules are re-initialized with the new settings.
+Reloads config.yml and messages.yml without restarting. All modules re-initialized.
 
 #### `/al gui`
-Opens an interactive inventory GUI for managing plugin settings. Only available to in-game players.
+Opens an interactive inventory GUI for managing settings. In-game only.
 
 #### `/al status`
-Displays a summary of current plugin settings, including:
-- Plugin enabled status
-- Detection enabled/disabled
-- Detection action (LOG/KICK/BAN/COMMANDS)
-- Signal checks (Servux metadata, EasyPlace, NBT query)
-- Anti-printer status
-- Command guard status
-- Graduated punishment status
+Displays current settings: enabled, detection action, storage type, signal checks, anti-printer, command guard, graduated punishment.
 
 #### `/al update`
-Checks GitHub for new releases. If an update is available, displays the version number and download link.
+Checks GitHub for new releases. Shows version and download link if available.
 
 #### `/al build`
-Downloads the latest release JAR from GitHub to the configured `output_path`. Only works if `auto_build` is enabled and configured in `config.yml`.
+Downloads latest release JAR from GitHub to configured output_path (auto-detects plugins folder if empty). Auto-replaces running JAR.
 
-#### `/al reset <player>`
-Resets the violation record for the specified player. This clears their violation count and punishment level in the graduated system.
+#### `/al reset`
+- `/al reset <player>` -- Reset a specific player's record
+- `/al reset all` -- Reset ALL violation records
+- `/al reset expired` -- Clear only expired records
 
-#### `/al history <player>`
-Displays the violation record for a player:
-- Current window violation count
-- Total lifetime violations
-- First and last violation timestamps
+#### `/al history <player> [page]`
+Displays violation record with pagination (5 entries per page).
+
+#### `/al export`
+Exports all violation records to violations_export.json in the plugin folder.
+
+#### `/al import`
+Imports violation records from violations_export.json in the plugin folder.
+
+#### `/al testnotify`
+Tests all configured notification services (Discord webhook and OneBot QQ bot).
+
+#### `/al kickall`
+Kicks all players currently marked as punished. Respects antilitematica.bypass permission.
 
 #### `/al whitelist`
-Manage the violation whitelist. See [Configuration](CONFIG.md#whitelist) for details.
+Manage the violation whitelist. See Configuration for details.
 
 ---
 
@@ -61,15 +69,15 @@ Manage the violation whitelist. See [Configuration](CONFIG.md#whitelist) for det
 
 | Permission | Default | Description |
 |------------|---------|-------------|
-| `antilitematica.admin` | OP | Access to all `/al` commands |
-| `antilitematica.bypass` | OP | Bypass all detection checks entirely |
-| `antilitematica.notify` | OP | Receive staff alert messages |
+| antilitematica.admin | OP | Access to all /al commands |
+| antilitematica.bypass | OP | Bypass all detection checks entirely |
+| antilitematica.notify | OP | Receive staff alert messages |
 
-### Permission Notes
+### Notes
 
-- **`antilitematica.bypass`**: Players with this permission will never be detected or punished. Use for server staff and testers.
-- **`antilitematica.notify`**: Players with this permission receive real-time alerts when detections occur, including player name, reason, and action taken.
-- Players without `antilitematica.admin` cannot use any `/al` commands.
+- **antilitematica.bypass**: Players with this permission are never detected or punished.
+- **antilitematica.notify**: Players receive real-time alerts on detection events.
+- Players without antilitematica.admin cannot use any /al commands.
 
 ---
 

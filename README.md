@@ -1,6 +1,6 @@
 # AntiLitematica
 
-**The ultimate Litematica / Schematica / Printer detection plugin for Paper/Spigot**
+**Litematica / Schematica / Printer detection plugin for Paper/Spigot**
 
 ![Version](https://img.shields.io/badge/version-5.0.0-blue) ![MC Version](https://img.shields.io/badge/1.12.2%2B-green)
 [![Build](https://github.com/ALingqing/AntiLitematica/actions/workflows/maven.yml/badge.svg)](https://github.com/ALingqing/AntiLitematica/actions/workflows/maven.yml)
@@ -10,7 +10,7 @@
 
 ## Overview
 
-AntiLitematica is a server-side plugin that detects and prevents the use of **Litematica**, **Schematica**, and their **Printer** features on your Minecraft server. No client-side mod installation required.
+AntiLitematica is a server-side plugin that detects and prevents the use of Litematica, Schematica, and their Printer features on your Minecraft server. No client-side mod installation required.
 
 Built with ProtocolLib deep inspection, a graduated punishment system, Geyser (Bedrock) compatibility, and a built-in web dashboard, AntiLitematica provides robust protection while minimizing false positives.
 
@@ -18,25 +18,29 @@ Built with ProtocolLib deep inspection, a graduated punishment system, Geyser (B
 
 ## Features
 
-- **Network Channel Detection** — Monitors `servux:litematics` and Schematica plugin channel registration and payloads
-- **ProtocolLib Deep Inspection** — Detects EasyPlace protocol abuse, NBT debug queries, and Servux metadata fingerprints even when players disable sync
-- **Anti-Printer Engine** — Multi-layered block placement analysis: enforced raytrace, rate limiting, consecutive same-type detection, no-look-change detection
-- **Command Guard** — Blocks rapid command bursts and `/setblock` spam used by schematic quick-paste
-- **Graduated Punishment** — Escalating penalties: Warn, TempBan, Ban. Supports LiteBans, AdvancedBan, and EssentialsX
-- **Geyser Compatible** — Bedrock players auto-exempted from all checks
-- **Discord Webhook** — Rich embed alerts sent to your staff Discord on detection or punishment
-- **Anti-Cheat Integration** — Optional integration with GrimAC, Vulcan, or Matrix
-- **Dynamic Thresholds** — Automatically adjusts detection sensitivity based on server TPS and online player count
-- **In-Game GUI** — Manage all settings through an intuitive inventory interface with live reload
-- **PlaceholderAPI Support** — Exposes placeholders for external plugins
-- **Violation Whitelist** — Trusted players trigger only logging, no punishment
-- **Web Dashboard** — Built-in monitoring panel (JDK HttpServer, no extra dependencies) with zh_CN / en_US / zh_TW
-- **Auto Update Checker** — Notifies admins on join when a new GitHub release is available
-- **Auto GitHub Download** — Downloads latest release JAR automatically (nightly schedule or `/al build`). Auto-detects plugins folder path.
-- **MySQL Storage** — Violation records can be stored in MySQL/MariaDB (configurable host, port, database, credentials)
-- **Dedicated Detection Log** — Separate `detections.log` with daily rotation for audit purposes
-- **Config Auto-Migration** — Old `config.yml` files are automatically updated with new default sections while preserving existing settings
-- **Public API** — `AntiLitematicaAPI` interface with Bukkit events (`DetectionEvent`, `PunishmentEvent`) for third-party plugin integration
+- **Network Channel Detection** -- Monitors servux:litematics and Schematica plugin channel registration and payloads
+- **ProtocolLib Deep Inspection** -- Detects EasyPlace protocol abuse, NBT debug queries, and Servux metadata fingerprints
+- **Anti-Printer Engine** -- Multi-layered block placement analysis: enforced raytrace, rate limiting, consecutive same-type, no-look-change
+- **Command Guard** -- Blocks rapid command bursts and /setblock spam, with configurable allowlist
+- **World Whitelist** -- Skip detection entirely in configured worlds (build/creative servers)
+- **Graduated Punishment** -- Escalating penalties: Warn, TempBan, Ban. Supports LiteBans, AdvancedBan, EssentialsX
+- **Geyser Compatible** -- Bedrock players auto-exempted from all checks
+- **Discord Webhook** -- Rich embed alerts on detection or punishment
+- **OneBot 11 (QQ Bot)** -- Send notifications to QQ groups via LLBot/go-cqhttp
+- **Anti-Cheat Integration** -- Optional integration with GrimAC, Vulcan, or Matrix
+- **Dynamic Thresholds** -- Auto-adjusts detection sensitivity based on TPS and player count
+- **In-Game GUI** -- Manage settings through an inventory interface with live reload
+- **PlaceholderAPI Support** -- Placeholders for external plugins
+- **Violation Whitelist** -- Trusted players: log only, no punishment
+- **Web Dashboard** -- Built-in monitoring panel (JDK HttpServer, no extra deps). SSE real-time updates, violation ranking, audit log view, Prometheus metrics endpoint
+- **Auto GitHub Download** -- Downloads latest release JAR (nightly or /al build). Auto-detects plugins folder, auto-replaces running JAR
+- **MySQL Storage** -- Violation records in MySQL/MariaDB
+- **Detection Statistics** -- Daily detection/punishment counts, hit rate tracking, configurable retention
+- **Admin Audit Log** -- All admin actions logged to audit.log, viewable in Web Dashboard
+- **Config Auto-Migration** -- Old config.yml auto-updated with new defaults
+- **Multi-Language** -- Auto-detects player client language (50+ locales), falls back through chain
+- **Public API** -- AntiLitematicaAPI interface with DetectionEvent (cancellable) and PunishmentEvent
+- **Prometheus Metrics** -- /api/metrics endpoint for Prometheus/Grafana monitoring
 
 ---
 
@@ -45,11 +49,9 @@ Built with ProtocolLib deep inspection, a graduated punishment system, Geyser (B
 ```yaml
 # 1. Install ProtocolLib and AntiLitematica in plugins/
 # 2. Edit plugins/AntiLitematica/config.yml:
-
 detection:
   enabled: true
   action: "KICK"
-
 # 3. Run /al reload
 ```
 
@@ -59,13 +61,13 @@ Full installation guide: [wiki/INSTALL.md](wiki/INSTALL.md)
 
 ## How It Works
 
-1. **Channel Detection** — When a player joins, the plugin monitors plugin channel registration. If `servux:litematics` is detected, action is taken immediately.
-2. **ProtocolLib Signals** — Suspicious packets (abnormal hit vectors, NBT queries, Servux metadata requests) are intercepted as strong indicators of Litematica activity.
-3. **Anti-Printer Analysis** — Every block placement is analyzed for inhuman patterns: no raytrace hit, excessive speed, consecutive identical blocks, no camera movement.
-4. **Command Guard** — Rapid command execution patterns (e.g., `/setblock` bursts) are detected and blocked.
-5. **Punishment Execution** — Warnings, kicks, temporary bans, or permanent bans are applied. Ban plugin hooks attempt LiteBans → AdvancedBan → EssentialsX → Bukkit native in order.
+1. Channel Detection -- Monitors plugin channel registration. servux:litematics triggers immediate action.
+2. ProtocolLib Signals -- Intercepts abnormal hit vectors (EasyPlace), NBT queries, and Servux metadata.
+3. Anti-Printer Analysis -- Every block placement analyzed for inhuman patterns: no raytrace, excessive speed, identical blocks, no camera movement.
+4. Command Guard -- Detects rapid command bursts used by schematic quick-paste. Allowlist exempts normal commands.
+5. Punishment Execution -- Warnings, kicks, temp bans, or permanent bans. Ban hooks: LiteBans, AdvancedBan, EssentialsX, Bukkit native.
 
-All checks respect the `antilitematica.bypass` permission and automatically skip Geyser Bedrock players.
+All checks respect antilitematica.bypass and auto-exempt Geyser Bedrock players.
 
 ---
 
@@ -73,14 +75,18 @@ All checks respect the `antilitematica.bypass` permission and automatically skip
 
 | Command | Alias | Description |
 |---------|-------|-------------|
-| `/antilitematica reload` | `/al reload` | Reload configuration from disk |
-| `/antilitematica gui` | `/al gui` | Open configuration GUI (in-game only) |
-| `/antilitematica status` | `/al status` | View current plugin settings |
-| `/antilitematica update` | `/al update` | Check GitHub for new releases |
-| `/antilitematica build` | `/al build` | Download latest release JAR from GitHub |
-| `/antilitematica reset <player>` | `/al reset` | Reset a player's violation record |
-| `/antilitematica history <player>` | `/al history` | View a player's violation history |
-| `/antilitematica whitelist ...` | `/al whitelist` | Manage violation whitelist |
+| `/al reload` | | Reload configuration |
+| `/al gui` | | Open configuration GUI |
+| `/al status` | | View plugin status |
+| `/al update` | | Check GitHub for updates |
+| `/al build` | | Download latest release JAR |
+| `/al reset <player\|all\|expired>` | | Reset violation records |
+| `/al history <player> [page]` | | View violation history |
+| `/al export` | | Export records to JSON |
+| `/al import` | | Import records from JSON |
+| `/al testnotify` | | Test Discord/OneBot notifications |
+| `/al kickall` | | Kick all flagged players |
+| `/al whitelist list\|add\|remove` | | Manage whitelist |
 
 Full reference: [wiki/COMMANDS.md](wiki/COMMANDS.md)
 
@@ -90,9 +96,9 @@ Full reference: [wiki/COMMANDS.md](wiki/COMMANDS.md)
 
 | Permission | Default | Description |
 |------------|---------|-------------|
-| `antilitematica.admin` | OP | Access to all `/al` commands |
-| `antilitematica.bypass` | OP | Bypass all detection checks entirely |
-| `antilitematica.notify` | OP | Receive staff alert messages |
+| antilitematica.admin | OP | All /al commands |
+| antilitematica.bypass | OP | Bypass all checks |
+| antilitematica.notify | OP | Receive alerts |
 
 ---
 
@@ -111,19 +117,24 @@ Full reference: [wiki/COMMANDS.md](wiki/COMMANDS.md)
 
 ## Web Dashboard
 
-AntiLitematica includes a built-in web-based monitoring dashboard. No additional web server required.
+Built-in monitoring panel at `http://<your-server-ip>:25418`. No extra dependencies.
 
 ```yaml
 web_dashboard:
   enabled: true
   port: 25418
   password: "your_password"
-  locale: "zh_CN"    # zh_CN / en_US / zh_TW
+  locale: "zh_CN"
 ```
 
-Access at `http://<your-server-ip>:25418`
-
-Features: server overview (TPS, online players), real-time player list with violation counts, violation records viewer, quick settings toggles, multi-language UI.
+Features:
+- Real-time server overview with SSE (auto-refresh)
+- Player list with ping, gamemode, violation count
+- Violation records viewer with ranking (top 20)
+- Quick settings toggles (detection, printer, command guard, punishment, webhook)
+- Admin audit log viewer
+- Multi-language UI (zh_CN / en_US / zh_TW)
+- Prometheus metrics at /api/metrics
 
 Full guide: [wiki/WEB_DASHBOARD.md](wiki/WEB_DASHBOARD.md)
 
@@ -131,49 +142,36 @@ Full guide: [wiki/WEB_DASHBOARD.md](wiki/WEB_DASHBOARD.md)
 
 ## API for Developers
 
-AntiLitematica exposes a public API for other plugins:
-
 ```java
-// Obtain the API instance
 AntiLitematicaAPI api = AntiLitematicaAPI.getInstance();
-
-// Query player state
 int violations = api.getViolationCount(player.getUniqueId());
-boolean whitelisted = api.isPlayerWhitelisted(player.getName());
-
-// Trigger detections programmatically
 api.triggerDetection(player, "servux:litematics", "custom check");
-
-// Listen to events
-@EventHandler
-public void onDetection(DetectionEvent event) {
-    if (event.getPlayer().hasPermission("myplugin.exempt")) {
-        event.setCancelled(true); // Prevent punishment
-    }
-}
 ```
 
-Available events: `DetectionEvent` (cancellable), `PunishmentEvent` (post-execution).
+Events: DetectionEvent (cancellable), PunishmentEvent (post-execution).
 
 Full reference: [docs/API.md](docs/API.md)
 
 ---
 
-## Configuration
+## Configuration Overview
 
-All settings are stored in `plugins/AntiLitematica/config.yml` and `messages.yml`. Key sections:
-
-- `detection` — Channel list, action type (LOG/KICK/BAN/COMMANDS), ProtocolLib signal toggles
-- `anti_printer` — Raytrace enforcement, reach distance, rate limits, pattern detection thresholds
-- `command_guard` — Blocked commands, burst limits
-- `graduated_punishment` — Escalation levels, durations, storage type (sqlite/mysql/memory), MySQL credentials
-- `discord` — Webhook URL, embed customization, proxy support
-- `integration` — Anti-cheat adapter (grim/vulcan/matrix/none)
-- `dynamic_threshold` — TPS and player-count based sensitivity adjustment
-- `whitelist` — Player exemption list (LOG_ONLY / NORMAL mode)
-- `web_dashboard` — Port, password, language
-- `auto_build` — GitHub auto-download settings (plugins folder auto-detection, nightly time, post-download command)
-- `detection_log` — Dedicated log file with daily rotation
+- `detection` -- Channel list, action type, ProtocolLib signals
+- `anti_printer` -- Raytrace, reach, rate limits, pattern thresholds
+- `command_guard` -- Block/allow commands, burst limits
+- `world_whitelist` -- Worlds to skip detection
+- `graduated_punishment` -- Escalation levels, storage (sqlite/mysql/memory)
+- `integration` -- Anti-cheat adapter (grim/vulcan/matrix/none)
+- `whitelist` -- Player exemption (LOG_ONLY / NORMAL)
+- `discord` -- Webhook URL, embed, proxy
+- `onebot` -- QQ Bot HTTP API configuration
+- `web_dashboard` -- Port, password, language
+- `dynamic_threshold` -- TPS/player-based sensitivity
+- `detection_log` -- Dedicated log file
+- `stats` -- Detection statistics and record retention
+- `auto_build` -- GitHub auto-download
+- `lang` -- Server default language
+- `bstats` -- Metrics opt-out
 
 Full reference: [wiki/CONFIG.md](wiki/CONFIG.md)
 
@@ -181,8 +179,8 @@ Full reference: [wiki/CONFIG.md](wiki/CONFIG.md)
 
 ## Dependencies
 
-- **Required:** [ProtocolLib](https://www.spigotmc.org/resources/protocollib/1997/)
-- **Optional:** PlaceholderAPI, Geyser/Floodgate, LiteBans, AdvancedBan, EssentialsX, GrimAC, Vulcan, Matrix, MySQL Connector/J
+- Required: [ProtocolLib](https://www.spigotmc.org/resources/protocollib/1997/)
+- Optional: PlaceholderAPI, Geyser/Floodgate, LiteBans, AdvancedBan, EssentialsX, GrimAC, Vulcan, Matrix, MySQL Connector/J
 
 ---
 
@@ -195,9 +193,7 @@ mvn clean package
 # Output: target/AntiLitematica-<version>.jar
 ```
 
-The project is built with Java 21 and Maven. CI builds are automatically run on push via GitHub Actions.
-
----
+Built with Java 21 and Maven. CI via GitHub Actions.
 
 ## Compatibility
 

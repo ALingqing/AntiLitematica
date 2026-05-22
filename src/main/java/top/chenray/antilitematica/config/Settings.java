@@ -12,13 +12,13 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-public record Settings(boolean enabled, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, WebDashboard webDashboard, AutoBuild autoBuild, OneBot onebot) {
+public record Settings(boolean enabled, String lang, boolean autoLocale, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, WorldWhitelist worldWhitelist, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, WebDashboard webDashboard, AutoBuild autoBuild, OneBot onebot) {
    public static Settings from(Plugin plugin, FileConfiguration cfg) {
       boolean enabled = cfg.getBoolean("enabled", true);
 
       // ---- Locale-aware messages ----
-      String locale = cfg.getString("locale", "zh_CN");
-      File messagesFile = findMessagesFile(plugin, locale);
+      String lang = cfg.getString("lang", "zh_CN");
+      File messagesFile = findMessagesFile(plugin, lang);
       FileConfiguration messagesCfg = YamlConfiguration.loadConfiguration(messagesFile);
       String prefix = messagesCfg.getString("prefix", "&7[&cAntiLitematica&7] ");
       String kickMsg = messagesCfg.getString("kick", "&cYou are not allowed to use Litematica / Printer (or its network fingerprint) on this server.");
@@ -56,7 +56,11 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
       AntiPrinter antiPrinter = new AntiPrinter(ap.getBoolean("enabled", true), ap.getBoolean("apply_to_creative", true), ap.getBoolean("enforce_raytrace", true), ap.getDouble("reach_survival", (double)5.0F), ap.getDouble("reach_creative", (double)6.0F), ap.getDouble("extra_reach_allowance", (double)0.25F), ap.getInt("max_blocks_per_second", 14), ap.getBoolean("detect_consecutive_same_type", true), ap.getInt("consecutive_same_type_threshold", 6), ap.getBoolean("detect_no_look_change", true), ap.getInt("no_look_change_threshold", 5), new Violations(vio.getLong("window_ms", 8000L), vio.getInt("kick_at", 8)));
       ConfigurationSection cg = section(cfg, "command_guard");
       ConfigurationSection cgVio = section(cg, "violations");
-      CommandGuard commandGuard = new CommandGuard(cg.getBoolean("enabled", true), normalizedSet(cg.getStringList("blocked_commands")), cg.getInt("max_per_window", 8), cg.getLong("window_ms", 3000L), new Violations(cgVio.getLong("window_ms", 8000L), cgVio.getInt("kick_at", 5)));
+      CommandGuard commandGuard = new CommandGuard(cg.getBoolean("enabled", true),
+            normalizedSet(cg.getStringList("blocked_commands")),
+            normalizedSet(cg.getStringList("allowed_commands")),
+            cg.getInt("max_per_window", 8), cg.getLong("window_ms", 3000L),
+            new Violations(cgVio.getLong("window_ms", 8000L), cgVio.getInt("kick_at", 5)));
       ConfigurationSection integ = section(cfg, "integration");
       Integration integration = new Integration(integ.getString("type", "none").toLowerCase(Locale.ROOT), integ.getBoolean("enabled", false), integ.getInt("violation_level", 10), integ.getString("check_prefix", "AntiLitematica"));
       ConfigurationSection dc = section(cfg, "discord");
@@ -84,6 +88,13 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
             wd.getInt("port", 25418),
             wd.getString("password", "admin"),
             wd.getString("locale", "zh_CN")
+      );
+
+      // ---- World Whitelist ----
+      ConfigurationSection ww = section(cfg, "world_whitelist");
+      WorldWhitelist worldWhitelist = new WorldWhitelist(
+            ww.getBoolean("enabled", false),
+            normalizedSet(ww.getStringList("worlds"))
       );
 
       // ---- Violation Whitelist ----
@@ -155,7 +166,9 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
             ob.getLong("group_id", 0)
       );
 
-      return new Settings(enabled, messages, detection, antiPrinter, commandGuard, graduatedPunishment, integration, discord, whitelist, webDashboard, autoBuild, onebot);
+      boolean autoLocale = cfg.getBoolean("auto_locale", true);
+
+      return new Settings(enabled, lang, autoLocale, messages, detection, antiPrinter, commandGuard, worldWhitelist, graduatedPunishment, integration, discord, whitelist, webDashboard, autoBuild, onebot);
    }
 
    private static ConfigurationSection section(ConfigurationSection parent, String path) {
@@ -165,27 +178,54 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
 
    /**
     * Find the best available messages file for the given locale.
-    * Falls back: messages_{locale}.yml → messages.yml → default messages from jar
+    * Looks in lang/ folder first, then plugin root (backward compat).
+    * Falls back: lang/messages_{locale}.yml → lang/messages.yml → messages.yml
     */
    private static File findMessagesFile(Plugin plugin, String locale) {
       if (locale == null || locale.isEmpty() || "default".equalsIgnoreCase(locale)) {
          locale = "zh_CN";
       }
-      // Try locale-specific file first
-      File localeFile = new File(plugin.getDataFolder(), "messages_" + locale + ".yml");
+      File langDir = new File(plugin.getDataFolder(), "lang");
+      // Try locale-specific file in lang/ folder
+      File localeFile = new File(langDir, "messages_" + locale + ".yml");
       if (localeFile.exists()) return localeFile;
+      // Try plugin root (backward compat)
+      File rootLocaleFile = new File(plugin.getDataFolder(), "messages_" + locale + ".yml");
+      if (rootLocaleFile.exists()) return rootLocaleFile;
 
-      // Try saving default locale file from jar
-      String resourcePath = "messages_" + locale + ".yml";
-      if (plugin.getResource(resourcePath) != null) {
-         plugin.saveResource(resourcePath, false);
-         return localeFile;
+      // Try saving from JAR resources/lang/
+      String jarPath = "lang/messages_" + locale + ".yml";
+      if (plugin.getResource(jarPath) != null) {
+         if (!langDir.exists()) langDir.mkdirs();
+         try (java.io.InputStream in = plugin.getResource(jarPath)) {
+            if (in != null) {
+               java.nio.file.Files.copy(in, localeFile.toPath());
+               return localeFile;
+            }
+         } catch (java.io.IOException e) {
+            // Ignore
+         }
       }
 
-      // Fall back to default messages.yml
-      File defaultFile = new File(plugin.getDataFolder(), "messages.yml");
+      // Fall back to lang/messages.yml
+      File defaultFile = new File(langDir, "messages.yml");
       if (!defaultFile.exists()) {
-         plugin.saveResource("messages.yml", false);
+         // Try plugin root
+         defaultFile = new File(plugin.getDataFolder(), "messages.yml");
+      }
+      if (!defaultFile.exists()) {
+         // Try saving from JAR resources/lang/messages.yml
+         if (plugin.getResource("lang/messages.yml") != null) {
+            if (!langDir.exists()) langDir.mkdirs();
+            try (java.io.InputStream in = plugin.getResource("lang/messages.yml")) {
+               if (in != null) {
+                  java.nio.file.Files.copy(in, new File(langDir, "messages.yml").toPath());
+                  defaultFile = new File(langDir, "messages.yml");
+               }
+            } catch (java.io.IOException e) {
+               // Ignore
+            }
+         }
       }
       return defaultFile;
    }
@@ -250,7 +290,7 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
    public static record AntiPrinter(boolean enabled, boolean applyToCreative, boolean enforceRaytrace, double reachSurvival, double reachCreative, double extraReachAllowance, int maxBlocksPerSecond, boolean detectConsecutiveSameType, int consecutiveSameTypeThreshold, boolean detectNoLookChange, int noLookChangeThreshold, Violations violations) {
    }
 
-   public static record CommandGuard(boolean enabled, Set<String> blockedCommands, int maxPerWindow, long windowMs, Violations violations) {
+   public static record CommandGuard(boolean enabled, Set<String> blockedCommands, Set<String> allowedCommands, int maxPerWindow, long windowMs, Violations violations) {
    }
 
    public static record GraduatedPunishment(
@@ -305,6 +345,15 @@ public record Settings(boolean enabled, Messages messages, Detection detection, 
    ) {
       public boolean isLogOnly() {
          return "LOG_ONLY".equalsIgnoreCase(mode);
+      }
+   }
+
+   /**
+    * World whitelist: players in these worlds are not checked.
+    */
+   public static record WorldWhitelist(boolean enabled, Set<String> worlds) {
+      public boolean isWorldExempt(String worldName) {
+         return enabled && worldName != null && worlds.contains(worldName.toLowerCase(java.util.Locale.ROOT));
       }
    }
 

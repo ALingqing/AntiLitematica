@@ -1,153 +1,126 @@
+# =====================================================================
 # AntiLitematica Configuration
 # Config version (auto-managed by ConfigMigrator, do not edit)
-config_version: 2
+# =====================================================================
+config_version: 3
 
+# -------------------------------------------------------------------
+# 1. GLOBAL SETTINGS
+# -------------------------------------------------------------------
+# Master switch. Set to false to disable all plugin functionality.
 enabled: true
 
-# Detection log file (separate from server console log)
-# Writes detection events to a date-rotated log file in the plugin folder
-detection_log:
-  enabled: false
-  # File name (relative to plugin data folder, supports date rotation)
-  file: "detections.log"
+# -------------------------------------------------------------------
+# 2. LOCALE & MESSAGES
+# -------------------------------------------------------------------
+# Server-wide default language (fallback when auto-locale cannot match).
+# Options: zh_CN / en_US / zh_TW
+# Language files are stored in the lang/ folder.
+lang: "zh_CN"
 
-# bStats metrics (plugin usage statistics)
-bstats:
-  enabled: true
+# Auto-detect each player's client language.
+# When enabled, messages are shown in the player's own language
+# (e.g. Chinese players see Chinese, German players see German).
+# Falls back to 'locale' setting if the player's language is not available.
+auto_locale: true
 
-# Dynamic threshold adjustment
-# Automatically adjusts detection sensitivity based on server TPS and online player count.
-# When TPS is low or many players are online, thresholds become more lenient to reduce false positives.
-dynamic_threshold:
-  enabled: false
-  check_interval_seconds: 30
-  tps:
-    high: 19.5
-    low: 16.0
-  players:
-    high: 50
-    low: 5
-  multiplier:
-    min: 1.0
-    max: 2.0
-
-# Messages are now in messages.yml - edit that file to customize messages.
+# Messages are in messages.yml - edit that file to customize messages.
+# The plugin will look for messages_<locale>.yml for each language.
 # Messages are reloaded with /antilitematica reload
 
+# -------------------------------------------------------------------
+# 3. DETECTION
+# -------------------------------------------------------------------
 detection:
   enabled: true
-  # If the client registers or sends data on any of the following channels, it is flagged as suspicious/violating (depending on the specific signal).
-  # Note: Litematica 1.21.11 includes Servux integration and may use `servux:litematics`.
+  # Plugin channels to monitor (lowercase, exact match).
+  # Litematica 1.21.11+ uses `servux:litematics` via Servux integration.
   channels:
     - "servux:litematics"
-  # To reduce false positives, keep this list as short as possible; only append channels when confirmed necessary.
+  # Keep this list short to reduce false positives.
 
-  # Actively block servux:litematics payloads to prevent projection data sync between client and server.
+  # Actively block servux:litematics payloads (prevents projection data sync).
   block_servux: true
 
-  # Only effective when action=COMMANDS:
+  # Commands to execute on detection (used when action=COMMANDS).
   # Placeholders: %player% %uuid% %reason% %channel% %why%
   commands: []
+  # Whether to kick the player after executing commands.
   kick_after_commands: true
 
-  # ProtocolLib-based extra signals: try to catch Litematica fingerprint behavior even if the player disables Servux sync.
+  # ProtocolLib signals: catch Litematica behavior even if Servux sync is disabled.
   signals:
-    # Detect Litematica Servux metadata request:
-    # VarInt type=2 + NBT["version"] contains "litematica"
     servux_metadata:
-      enabled: true
+      enabled: true   # VarInt type=2 + NBT["version"] contains "litematica"
 
-    # Detect Litematica "Easy Place" protocol:
-    # It encodes protocol data into the hit vector, causing hitVec relative to blockPos to far exceed normal range.
-    # Calculation: rel = hitVec - blockPos; vanilla is usually within [0..1] (allowing small error), Litematica may be > 2.
     easy_place:
-      enabled: true
+      enabled: true   # Abnormal hit-vector indicates EasyPlace protocol
       rel_min: -0.5
       rel_max: 1.5
       cancel_packet: false
 
-    # Detect debug NBT queries (block entity / entity tag query).
-    # Normal players should not send such packets (usually related to OP/debug features).
     nbt_query:
-      enabled: true
+      enabled: true   # Debug NBT queries (block entity / entity tag)
       allow_op: true
       cancel_packet: true
 
-  # Action after detection hit:
-  # - LOG: log only
-  # - KICK: kick the player
-  # - BAN: use the server's built-in name ban, then kick
-  # - COMMANDS: execute commands as console (can interface with ban plugins), optionally kick after execution
+  # Action on detection hit: LOG / KICK / BAN / COMMANDS
   action: "KICK"
-
-  # Punishment reason (placeholder for BAN / COMMANDS)
+  # Punishment reason (for BAN / COMMANDS placeholders)
   reason: "Forbidden client mod detected (Litematica)."
 
-# Discord Webhook notification settings
-discord:
-  enabled: false
-  # Webhook URL (can be created in Discord server settings -> Integrations)
-  webhook_url: ""
-  # Sender name
-  username: "AntiLitematica"
-  # Embed message title
-  embed_title: "Forbidden client detected"
-  # Embed color (decimal color value, e.g. 16711680 = red)
-  embed_color: 16711680
-  # Whether to send notification on detection (regardless of punishment)
-  notify_on_detection: true
-  # Whether to send notification when punishment is executed
-  notify_on_punish: true
-  # Proxy settings (leave empty to disable)
-  # proxy_host: "127.0.0.1"
-  # proxy_port: 7890
-  # proxy_username: ""  # optional, for authenticated proxies
-  # proxy_password: ""  # optional, for authenticated proxies
-
+# -------------------------------------------------------------------
+# 4. ANTI-PRINTER
+# -------------------------------------------------------------------
 anti_printer:
   enabled: true
   apply_to_creative: true
 
-  # Force server-side ray trace to hit the "block the placement relies on" (or in rare cases the already placed block).
-  # This prevents printers that can auto-place without looking at blocks.
+  # Force server-side raytrace: player must look at the block they place.
   enforce_raytrace: true
   reach_survival: 5.0
   reach_creative: 6.0
   extra_reach_allowance: 0.25
 
-  # Placement rate limit (max blocks placed per second). Set to 0 to disable.
+  # Placement rate limit (blocks/second). Set to 0 to disable.
   max_blocks_per_second: 14
 
-  # Detect consecutive placement of the same block type within 3 seconds.
-  # Printer bots often place many identical blocks in a row.
+  # Detect consecutive same-type block placement (bots place identical blocks).
   detect_consecutive_same_type: true
   consecutive_same_type_threshold: 6
 
-  # Detect placement without any look (yaw/pitch) change between placements.
-  # Humans almost always micro-adjust their aim; printers often do not.
+  # Detect no-look-change placement (humans micro-adjust aim, bots do not).
   detect_no_look_change: true
   no_look_change_threshold: 5
 
-  # Within the time window, if a player exceeds speed / ray trace check failure accumulates to the threshold, kick.
+  # Violation tracking within time window
   violations:
     window_ms: 8000
     kick_at: 8
 
-# Detect Litematica "quick paste" abuse via rapid command execution.
-# Litematica's executeOperation can spam /setblock or other configured commands.
+# -------------------------------------------------------------------
+# 5. COMMAND GUARD
+# -------------------------------------------------------------------
+# Blocks rapid command execution (e.g. /setblock spam from schematic quick-paste).
 command_guard:
   enabled: true
-  # Commands to block entirely (prefix match, case-insensitive).
+  # Commands to block (prefix match, case-insensitive)
   blocked_commands:
     - "/setblock"
-  # Max allowed commands within window_ms before flagging as burst.
+  # Commands to NEVER block (exceptions, takes priority over blocked_commands)
+  allowed_commands:
+    - "/msg"
+    - "/tell"
+    - "/r"
   max_per_window: 8
   window_ms: 3000
   violations:
     window_ms: 8000
     kick_at: 5
-    
-# Graduated punishment system (replaces single KICK/BAN with escalating penalties)
+
+# -------------------------------------------------------------------
+# 6. GRADUATED PUNISHMENT
+# -------------------------------------------------------------------
 graduated_punishment:
   enabled: true
 
@@ -155,9 +128,9 @@ graduated_punishment:
   window_minutes: 60
 
   # Storage: sqlite / mysql / memory
-  # sqlite: stores data in violations.db file (default)
-  # mysql: stores data in MySQL/MariaDB database (requires mysql section below)
-  # memory: stores data in RAM (lost on restart, for testing only)
+  # sqlite  - stores data in violations.db file (default)
+  # mysql   - stores data in MySQL/MariaDB (requires mysql config below)
+  # memory  - RAM only (lost on restart, for testing only)
   storage: sqlite
 
   # MySQL configuration (only used when storage: mysql)
@@ -168,7 +141,7 @@ graduated_punishment:
     user: "root"
     password: ""
 
-  # Punishment levels (executed in order based on violation count)
+  # Escalation levels (executed in order based on violation count)
   levels:
     1:
       action: warn
@@ -201,69 +174,117 @@ graduated_punishment:
     - "AdvancedBan"
     - "EssentialsX"
 
-# Anti-cheat integration settings
+# -------------------------------------------------------------------
+# 7. ANTI-CHEAT INTEGRATION
+# -------------------------------------------------------------------
 integration:
   enabled: false
   # Options: grim / vulcan / matrix / none
-  # grim: GrimAC (built-in API)
-  # vulcan: Vulcan (reflection-based, requires Vulcan on server)
-  # matrix: Matrix (reflection-based, requires Matrix on server)
   type: "none"
   violation_level: 10
   check_prefix: "AntiLitematica"
 
-# Locale setting for messages
-# Options: zh_CN / en_US / zh_TW / default
-# The plugin will look for messages_<locale>.yml in the plugin folder.
-# Falls back to messages.yml if locale file not found.
-locale: "zh_CN"
-
-# Violation whitelist: players who trigger detection but only get logged,
-# no punishment is applied. Useful for testing or trusted builders.
+# -------------------------------------------------------------------
+# 8. VIOLATION WHITELIST
+# -------------------------------------------------------------------
 whitelist:
   enabled: false
-  # LOG_ONLY: log detection but do not punish
-  # NORMAL: bypass all checks entirely
+  # LOG_ONLY: log only, no punishment
+  # NORMAL:   bypass all checks entirely
   mode: "LOG_ONLY"
-  # List of player names (case-insensitive, will be matched lowercase)
+  # Player names (case-insensitive, stored lowercase)
   players: []
 
-# Built-in web dashboard
-# Provides a web interface to monitor detections and manage the plugin.
-# Default port: 25418
-# Access: http://<your-server-ip>:25418
+# -------------------------------------------------------------------
+# 8b. WORLD IGNORE LIST
+# -------------------------------------------------------------------
+# Players in these worlds will NOT be checked at all.
+# Useful for build/creative worlds where schematic use is legitimate.
+world_whitelist:
+  enabled: false
+  worlds: []
+
+# -------------------------------------------------------------------
+# 9. NOTIFICATIONS
+# -------------------------------------------------------------------
+
+# 9a. Discord Webhook
+discord:
+  enabled: false
+  webhook_url: ""
+  username: "AntiLitematica"
+  embed_title: "Forbidden client detected"
+  embed_color: 16711680
+  notify_on_detection: true
+  notify_on_punish: true
+  # Proxy (optional)
+  # proxy_host: "127.0.0.1"
+  # proxy_port: 7890
+  # proxy_username: ""
+  # proxy_password: ""
+
+# 9b. OneBot 11 (QQ Bot)
+onebot:
+  enabled: false
+  http_url: "http://localhost:5700"
+  access_token: ""
+  group_id: 0
+
+# -------------------------------------------------------------------
+# 10. WEB DASHBOARD
+# -------------------------------------------------------------------
 web_dashboard:
   enabled: false
   port: 25418
-  # Password to access the dashboard
   password: "admin"
-  # Dashboard UI language: zh_CN / en_US / zh_TW
   locale: "zh_CN"
 
-# OneBot 11 (QQ Bot) notification settings
-# Requires a running OneBot 11 HTTP API server (e.g. go-cqhttp, Lagrange.Core)
-onebot:
+# -------------------------------------------------------------------
+# 11. DYNAMIC THRESHOLD
+# -------------------------------------------------------------------
+dynamic_threshold:
   enabled: false
-  # OneBot HTTP API address
-  http_url: "http://localhost:5700"
-  # Access token (if configured in OneBot)
-  access_token: ""
-  # Target QQ group ID to send notifications to (0 to disable group messages)
-  group_id: 0
+  check_interval_seconds: 30
+  tps:
+    high: 19.5
+    low: 16.0
+  players:
+    high: 50
+    low: 5
+  multiplier:
+    min: 1.0
+    max: 2.0
 
-# Auto update & deploy
-# Automatically downloads the latest AntiLitematica release JAR from GitHub Releases
-# and saves it to the server plugins folder.
-# The download runs asynchronously and does not block the server.
+# -------------------------------------------------------------------
+# 12. DETECTION LOG
+# -------------------------------------------------------------------
+detection_log:
+  enabled: false
+  file: "detections.log"
+
+# -------------------------------------------------------------------
+# 12b. STATISTICS & CLEANUP
+# -------------------------------------------------------------------
+stats:
+  # Enable detection statistics tracking (daily counts, hit rates)
+  enabled: true
+  # Auto-cleanup: days to keep violation records (0 = forever)
+  record_retention_days: 30
+  # Auto-cleanup: days to keep stats (0 = forever)
+  stats_retention_days: 90
+
+# -------------------------------------------------------------------
+# 13. AUTO UPDATE (GitHub Release Download)
+# -------------------------------------------------------------------
 auto_build:
   enabled: false
-  # Path to the server plugins folder where the downloaded JAR will be placed
   output_path: ""
-  # Nightly auto-update time (24-hour format, server local time)
-  # Set to empty string "" to disable nightly auto-updates
   nightly_time: "03:00"
-  # Whether to run /plugman reload AntiLitematica after successful download (requires PlugManX)
   auto_reload: false
-  # Custom command to run after successful download (e.g., "plugman reload AntiLitematica")
-  # If empty, uses the auto_reload setting above
   post_build_command: ""
+
+# -------------------------------------------------------------------
+# 14. METRICS
+# -------------------------------------------------------------------
+bstats:
+  enabled: true

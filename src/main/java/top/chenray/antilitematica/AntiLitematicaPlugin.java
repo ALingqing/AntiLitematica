@@ -1,5 +1,6 @@
 package top.chenray.antilitematica;
 
+import java.io.File;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
@@ -29,8 +30,11 @@ import top.chenray.antilitematica.threshold.DynamicThresholdManager;
 import top.chenray.antilitematica.api.AntiLitematicaAPIImpl;
 import top.chenray.antilitematica.build.AutoBuildManager;
 import top.chenray.antilitematica.update.UpdateChecker;
+import top.chenray.antilitematica.util.AuditLogger;
 import top.chenray.antilitematica.util.DetectionLogger;
+import top.chenray.antilitematica.util.LocaleManager;
 import top.chenray.antilitematica.util.OneBotNotifier;
+import top.chenray.antilitematica.util.StatsTracker;
 import top.chenray.antilitematica.web.DashboardServer;
 
 public final class AntiLitematicaPlugin extends JavaPlugin {
@@ -52,6 +56,9 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private AutoBuildManager autoBuildManager;
    private DetectionLogger detectionLogger;
    private OneBotNotifier oneBotNotifier;
+   private LocaleManager localeManager;
+   private StatsTracker statsTracker;
+   private AuditLogger auditLogger;
 
    public void onEnable() {
       // Fancy startup ASCII art
@@ -66,7 +73,25 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       // Auto-migrate old config files to include new default sections
       new ConfigMigrator(this).migrate();
       this.saveDefaultConfig();
-      this.saveResource("messages.yml", false);
+      // Save bundled language files from JAR resources/lang/ to plugin lang/ folder
+      File langDir = new File(this.getDataFolder(), "lang");
+      if (!langDir.exists()) langDir.mkdirs();
+      String[] bundledLangs = {"messages.yml", "messages_zh_CN.yml", "messages_en_US.yml", "messages_zh_TW.yml"};
+      for (String name : bundledLangs) {
+         String resourcePath = "lang/" + name;
+         if (this.getResource(resourcePath) != null) {
+            File target = new File(langDir, name);
+            if (!target.exists()) {
+               try (java.io.InputStream in = this.getResource(resourcePath)) {
+                  if (in != null) {
+                     java.nio.file.Files.copy(in, target.toPath());
+                  }
+               } catch (java.io.IOException e) {
+                  this.getLogger().warning("Failed to save " + name + ": " + e.getMessage());
+               }
+            }
+         }
+      }
       this.guiInputManager = new GuiInputManager(this);
       this.configGui = new ConfigGui(this, this.guiInputManager);
       this.guiListener = new GuiListener(this, this.configGui, this.guiInputManager);
@@ -113,6 +138,19 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       boolean logEnabled = this.getConfig().getBoolean("detection_log.enabled", false);
       String logFile = this.getConfig().getString("detection_log.file", "detections.log");
       this.detectionLogger = new DetectionLogger(this, logEnabled, logFile);
+
+      // ---- Stats Tracker ----
+      boolean statsEnabled = this.getConfig().getBoolean("stats.enabled", true);
+      int recordRetention = this.getConfig().getInt("stats.record_retention_days", 30);
+      int statsRetention = this.getConfig().getInt("stats.stats_retention_days", 90);
+      this.statsTracker = new StatsTracker(this, statsEnabled, recordRetention, statsRetention);
+
+      // ---- Audit Logger ----
+      this.auditLogger = new AuditLogger(this);
+
+      // ---- Locale Manager ----
+      this.localeManager = new LocaleManager(this,
+            this.settings.lang(), this.settings.autoLocale());
 
       // ---- OneBot (QQ Bot) notifier ----
       if (this.settings.onebot() != null && this.settings.onebot().enabled()) {
@@ -165,6 +203,10 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          this.detectionLogger.close();
       }
 
+      if (this.auditLogger != null) {
+         this.auditLogger.close();
+      }
+
       if (this.autoBuildManager != null) {
          this.autoBuildManager.stop();
       }
@@ -208,6 +250,14 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
       if (this.punishmentTracker != null) {
          this.punishmentTracker.shutdown();
+      }
+
+      // Reload locale manager
+      if (this.localeManager != null) {
+         this.localeManager.clearCache();
+      } else {
+         this.localeManager = new LocaleManager(this,
+               this.settings.lang(), this.settings.autoLocale());
       }
 
       // Reschedule auto-update after config reload
@@ -299,5 +349,17 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
    public OneBotNotifier getOneBotNotifier() {
       return this.oneBotNotifier;
+   }
+
+   public LocaleManager getLocaleManager() {
+      return this.localeManager;
+   }
+
+   public StatsTracker getStatsTracker() {
+      return this.statsTracker;
+   }
+
+   public AuditLogger getAuditLogger() {
+      return this.auditLogger;
    }
 }

@@ -58,11 +58,23 @@ public final class CommandGuard implements Listener {
       if (shouldBypass(p)) {
          return;
       }
+      // Check world whitelist
+      if (this.settings.worldWhitelist() != null
+            && this.settings.worldWhitelist().isWorldExempt(p.getWorld().getName())) {
+         return;
+      }
 
       Settings.CommandGuard cg = this.settings.commandGuard();
       int effectiveMaxPerWindow = plugin.getDynamicThresholdManager().adjustInt(cg.maxPerWindow());
       String cmd = event.getMessage();
       String cmdLower = cmd.toLowerCase(Locale.ROOT);
+
+      // Check allowed commands whitelist (takes priority)
+      for (String allowed : cg.allowedCommands()) {
+         if (cmdLower.startsWith(allowed.toLowerCase(Locale.ROOT))) {
+            return; // Skip all checks for allowed commands
+         }
+      }
 
       // Check blocked commands (Litematica quick-paste often uses /setblock)
       boolean blocked = false;

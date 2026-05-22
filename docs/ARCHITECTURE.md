@@ -25,6 +25,8 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 │          │          │          │          │                  │
 │          │          │          │          │  DetectionLogger │
 │          │          │          │          │  ConfigMigrator  │
+│          │          │          │          │  StatsTracker    │
+│          │          │          │          │  AuditLogger     │
 └──────────┴──────────┴──────────┴──────────┴──────────────────┘
          │            │          │                    │
          ▼            ▼          ▼                    ▼
@@ -144,6 +146,17 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 - **Package:** `top.chenray.antilitematica.config`
 - **Purpose:** Auto-migrates old `config.yml` to add new default sections
 - **Versioning:** `config_version` field tracks migration state
+
+#### `StatsTracker`
+- **Package:** `top.chenray.antilitematica.util`
+- **Purpose:** Tracks daily detection/punishment counts, hit rates
+- **Storage:** stats.yml with configurable retention days
+- **Integration:** Called from Punisher and GraduatedPunisher
+
+#### `AuditLogger`
+- **Package:** `top.chenray.antilitematica.util`
+- **Purpose:** Logs all admin actions (config changes, resets, kicks) to audit.log
+- **Viewable:** In Web Dashboard audit tab
 
 #### `UpdateChecker`
 - **Package:** `top.chenray.antilitematica.update`

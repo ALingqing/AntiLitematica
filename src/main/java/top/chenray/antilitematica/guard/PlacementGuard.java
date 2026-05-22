@@ -30,12 +30,12 @@ import top.chenray.antilitematica.util.ViolationWindow;
 public final class PlacementGuard implements Listener {
    private final AntiLitematicaPlugin plugin;
    private final Settings settings;
-   private final Map<UUID, TokenBucket> buckets = new ConcurrentHashMap();
-   private final Map<UUID, ViolationWindow> violations = new ConcurrentHashMap();
-   private final Map<UUID, Deque<PlacementSnapshot>> recentPlacements = new ConcurrentHashMap();
-   private final Map<UUID, Float> lastYaw = new ConcurrentHashMap();
-   private final Map<UUID, Float> lastPitch = new ConcurrentHashMap();
-   private final Map<UUID, Integer> noLookChangeCount = new ConcurrentHashMap();
+   private final Map<UUID, TokenBucket> buckets = new ConcurrentHashMap<>();
+   private final Map<UUID, ViolationWindow> violations = new ConcurrentHashMap<>();
+   private final Map<UUID, Deque<PlacementSnapshot>> recentPlacements = new ConcurrentHashMap<>();
+   private final Map<UUID, Float> lastYaw = new ConcurrentHashMap<>();
+   private final Map<UUID, Float> lastPitch = new ConcurrentHashMap<>();
+   private final Map<UUID, Integer> noLookChangeCount = new ConcurrentHashMap<>();
 
    public PlacementGuard(AntiLitematicaPlugin plugin, Settings settings) {
       this.plugin = plugin;
@@ -131,6 +131,11 @@ public final class PlacementGuard implements Listener {
    }
 
    private void deny(Cancellable event, Player p, String type) {
+      // Check world whitelist
+      if (this.settings.worldWhitelist() != null
+            && this.settings.worldWhitelist().isWorldExempt(p.getWorld().getName())) {
+         return;
+      }
       event.setCancelled(true);
       ViolationWindow vw = (ViolationWindow)this.violations.computeIfAbsent(p.getUniqueId(), (ignored) -> new ViolationWindow(this.settings.antiPrinter().violations().windowMs()));
       int n = vw.addViolation();

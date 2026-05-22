@@ -9,7 +9,7 @@ softdepend: [PlaceholderAPI]
 commands:
   antilitematica:
     description: AntiLitematica admin command
-    usage: /antilitematica <reload | status | gui | update | build | reset | history | export | import | testnotify | whitelist>
+    usage: /antilitematica <reload | status | gui | update | build | reset | history | export | import | testnotify | kickall | whitelist>
     aliases: [al]
     permission: antilitematica.admin
 

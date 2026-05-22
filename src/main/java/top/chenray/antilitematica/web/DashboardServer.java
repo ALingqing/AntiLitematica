@@ -30,6 +30,7 @@ import com.sun.net.httpserver.HttpServer;
 import top.chenray.antilitematica.AntiLitematicaPlugin;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.punish.ViolationRecord;
+import top.chenray.antilitematica.util.StatsTracker;
 
 public final class DashboardServer {
     private final AntiLitematicaPlugin plugin;
@@ -63,6 +64,10 @@ public final class DashboardServer {
             server.createContext("/api/clear", new ApiClearHandler());
             server.createContext("/api/settings", new ApiSettingsHandler());
             server.createContext("/api/switch_lang", new ApiSwitchLangHandler());
+            server.createContext("/api/ranking", new ApiRankingHandler());
+            server.createContext("/api/events", new ApiEventsHandler());
+            server.createContext("/api/audit", new ApiAuditHandler());
+            server.createContext("/api/metrics", new ApiMetricsHandler());
             server.createContext("/logout", new LogoutHandler());
             server.createContext("/static/theme.css", new ThemeHandler());
 
@@ -316,9 +321,11 @@ public final class DashboardServer {
                 + "<div id='tab-settings' style='display:none'>"
                 + "<div class='section'><h3>" + L("settings.title") + "</h3>"
                 + "<table>"
-                + "<tr><td>" + L("settings.detection") + "</td><td><label class='toggle'><input type='checkbox' id='set-detection' " + (detEnabled ? "checked" : "") + "><span class='slider'></span></label></td></tr>"
-                + "<tr><td>" + L("settings.printer") + "</td><td><label class='toggle'><input type='checkbox' id='set-printer' " + (printerEnabled ? "checked" : "") + "><span class='slider'></span></label></td></tr>"
-                + "<tr><td>" + L("settings.webhook") + "</td><td><label class='toggle'><input type='checkbox' id='set-webhook' " + (webhookEnabled ? "checked" : "") + "><span class='slider'></span></label></td></tr>"
+                + "<tr><td>" + L("settings.detection") + "</td><td><label class='toggle'><input type='checkbox' id='set-detection' checked><span class='slider'></span></label></td></tr>"
+                + "<tr><td>" + L("settings.printer") + "</td><td><label class='toggle'><input type='checkbox' id='set-printer' checked><span class='slider'></span></label></td></tr>"
+                + "<tr><td>Command Guard</td><td><label class='toggle'><input type='checkbox' id='set-commandguard' checked><span class='slider'></span></label></td></tr>"
+                + "<tr><td>Graduated Punishment</td><td><label class='toggle'><input type='checkbox' id='set-graduated' checked><span class='slider'></span></label></td></tr>"
+                + "<tr><td>" + L("settings.webhook") + "</td><td><label class='toggle'><input type='checkbox' id='set-webhook'><span class='slider'></span></label></td></tr>"
                 + "</table>"
                 + "<div style='margin-top:16px'><button class='btn primary' onclick='saveSettings()'>" + L("settings.save") + "</button></div>"
                 + "</div></div>"
@@ -351,9 +358,21 @@ public final class DashboardServer {
                 + "}).catch(()=>{document.getElementById('violations-table').innerHTML='<div class=\"empty\">"+L("error.load")+"</div>'})}"
                 + "function resetPlayer(uuid){fetch('/api/reset?uuid='+uuid).then(r=>r.json()).then(d=>{if(d.ok){showToast('"+L("players.reset")+" OK');loadPlayers();loadViolations();}})}"
                 + "function clearViolations(){fetch('/api/clear').then(r=>r.json()).then(d=>{if(d.ok){showToast('"+L("violations.clear")+" OK');loadViolations();}})}"
-                + "function saveSettings(){var d={detection:document.getElementById('set-detection').checked,printer:document.getElementById('set-printer').checked,webhook:document.getElementById('set-webhook').checked};"
+                + "function loadSettings(){fetch('/api/settings').then(r=>r.json()).then(d=>{"
+                + "document.getElementById('set-detection').checked=d.detection;"
+                + "document.getElementById('set-printer').checked=d.printer;"
+                + "document.getElementById('set-commandguard').checked=d.commandguard;"
+                + "document.getElementById('set-graduated').checked=d.graduated;"
+                + "document.getElementById('set-webhook').checked=d.webhook;}).catch(()=>{})}"
+                + "function saveSettings(){"
+                + "var d={detection:document.getElementById('set-detection').checked,"
+                + "printer:document.getElementById('set-printer').checked,"
+                + "commandguard:document.getElementById('set-commandguard').checked,"
+                + "graduated:document.getElementById('set-graduated').checked,"
+                + "webhook:document.getElementById('set-webhook').checked};"
                 + "fetch('/api/settings',{method:'POST',headers:{'Content-Type':'application/json'},body:JSON.stringify(d)}).then(r=>r.json()).then(d=>{if(d.ok)showToast('"+L("settings.saved")+"')})}"
                 + "function showToast(m){var t=document.getElementById('toast');t.textContent=m;t.classList.add('show');setTimeout(()=>t.classList.remove('show'),2500)}"
+                + "document.querySelectorAll('.nav-item').forEach(function(e){if(e.textContent.includes('" + L("nav.settings") + "'))e.onclick=function(){showTab('settings');loadSettings();}});"
                 + "loadOverview();setInterval(loadOverview,10000);"
                 + "</script></body></html>";
         sendHtml(exchange, 200, page);
@@ -503,12 +522,39 @@ public final class DashboardServer {
                 return;
             }
             if ("POST".equalsIgnoreCase(exchange.getRequestMethod())) {
-                // Read and apply settings from JSON body
-                // For simplicity, we reload config (full implementation would modify config.yml)
-                plugin.reloadSettings();
-                sendJson(exchange, 200, "{\"ok\":true}");
+                try {
+                    String body = readBody(exchange);
+                    // Expected: {"detection":true,"printer":false,"commandguard":true,"graduated":true,"webhook":true}
+                    boolean det = body.contains("\"detection\":true");
+                    boolean printer = body.contains("\"printer\":true");
+                    boolean cg = body.contains("\"commandguard\":true");
+                    boolean gp = body.contains("\"graduated\":true");
+                    boolean wh = body.contains("\"webhook\":true");
+
+                    java.io.File configFile = new java.io.File(plugin.getDataFolder(), "config.yml");
+                    org.bukkit.configuration.file.YamlConfiguration cfg =
+                            org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(configFile);
+                    cfg.set("detection.enabled", det);
+                    cfg.set("anti_printer.enabled", printer);
+                    cfg.set("command_guard.enabled", cg);
+                    cfg.set("graduated_punishment.enabled", gp);
+                    cfg.set("discord.enabled", wh);
+                    cfg.save(configFile);
+                    plugin.reloadSettings();
+                    sendJson(exchange, 200, "{\"ok\":true}");
+                } catch (Exception e) {
+                    sendJson(exchange, 400, "{\"error\":\"invalid body\"}");
+                }
             } else {
-                sendJson(exchange, 405, "{\"error\":\"method not allowed\"}");
+                // GET: return current settings
+                Settings s = plugin.settings();
+                String json = "{\"detection\":" + (s.detection() != null && s.detection().enabled())
+                        + ",\"printer\":" + (s.antiPrinter() != null && s.antiPrinter().enabled())
+                        + ",\"commandguard\":" + (s.commandGuard() != null && s.commandGuard().enabled())
+                        + ",\"graduated\":" + (s.graduatedPunishment() != null && s.graduatedPunishment().enabled())
+                        + ",\"webhook\":" + (s.discord() != null && s.discord().enabled())
+                        + "}";
+                sendJson(exchange, 200, json);
             }
         }
     }
@@ -599,6 +645,118 @@ public final class DashboardServer {
         if (millis <= 0) return "-";
         java.text.SimpleDateFormat sdf = new java.text.SimpleDateFormat("MM-dd HH:mm");
         return sdf.format(new java.util.Date(millis));
+    }
+
+    // ========== Ranking API ==========
+    private class ApiRankingHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String token = getSessionToken(exchange);
+            if (!validateSession(token)) { sendJson(exchange, 401, "{\"error\":\"unauthorized\"}"); return; }
+            var tracker = plugin.getPunishmentTracker();
+            StringBuilder json = new StringBuilder("{\"ranking\":[");
+            if (tracker != null) {
+                var records = tracker.getAllRecords();
+                records.sort((a, b) -> Integer.compare(b.totalViolations(), a.totalViolations()));
+                int limit = Math.min(20, records.size());
+                for (int i = 0; i < limit; i++) {
+                    var r = records.get(i);
+                    if (i > 0) json.append(",");
+                    json.append("{\"rank\":").append(i + 1)
+                        .append(",\"player\":\"").append(escapeJson(r.playerName())).append("\"")
+                        .append(",\"count\":").append(r.count())
+                        .append(",\"total\":").append(r.totalViolations())
+                        .append(",\"lastSeen\":\"").append(formatTime(r.lastViolation())).append("\"}");
+                }
+            }
+            json.append("]}");
+            sendJson(exchange, 200, json.toString());
+        }
+    }
+
+    // ========== SSE Events (real-time push) ==========
+    private class ApiEventsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String token = getSessionToken(exchange);
+            if (!validateSession(token)) { sendJson(exchange, 401, "{\"error\":\"unauthorized\"}"); return; }
+            exchange.getResponseHeaders().add("Content-Type", "text/event-stream; charset=utf-8");
+            exchange.getResponseHeaders().add("Cache-Control", "no-cache");
+            exchange.getResponseHeaders().add("Connection", "keep-alive");
+            exchange.sendResponseHeaders(200, 0);
+            OutputStream os = exchange.getResponseBody();
+            try {
+                for (int i = 0; i < 60; i++) { // Keep alive for 60 seconds
+                    var tracker = plugin.getPunishmentTracker();
+                    int total = tracker != null ? tracker.getAllRecords().size() : 0;
+                    String data = "data: {\"ts\":" + System.currentTimeMillis()
+                            + ",\"online\":" + Bukkit.getOnlinePlayers().size()
+                            + ",\"totalViolations\":" + total
+                            + ",\"todayDetections\":" + (plugin.getStatsTracker() != null ? plugin.getStatsTracker().getTodayDetections() : 0)
+                            + ",\"todayPunishments\":" + (plugin.getStatsTracker() != null ? plugin.getStatsTracker().getTodayPunishments() : 0)
+                            + "}\n\n";
+                    os.write(data.getBytes(StandardCharsets.UTF_8));
+                    os.flush();
+                    Thread.sleep(1000);
+                }
+            } catch (InterruptedException e) {
+                Thread.currentThread().interrupt();
+            } finally {
+                os.close();
+            }
+        }
+    }
+
+    // ========== Audit Log API ==========
+    private class ApiAuditHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            String token = getSessionToken(exchange);
+            if (!validateSession(token)) { sendJson(exchange, 401, "{\"error\":\"unauthorized\"}"); return; }
+            java.io.File auditFile = new java.io.File(plugin.getDataFolder(), "audit.log");
+            StringBuilder json = new StringBuilder("{\"logs\":[");
+            if (auditFile.exists()) {
+                var lines = java.nio.file.Files.readAllLines(auditFile.toPath(), StandardCharsets.UTF_8);
+                int start = Math.max(0, lines.size() - 50);
+                for (int i = start; i < lines.size(); i++) {
+                    if (i > start) json.append(",");
+                    json.append("{\"msg\":\"").append(escapeJson(lines.get(i))).append("\"}");
+                }
+            }
+            json.append("]}");
+            sendJson(exchange, 200, json.toString());
+        }
+    }
+
+    // ========== Prometheus Metrics ==========
+    private class ApiMetricsHandler implements HttpHandler {
+        @Override
+        public void handle(HttpExchange exchange) throws IOException {
+            var tracker = plugin.getPunishmentTracker();
+            var stats = plugin.getStatsTracker();
+            int totalV = tracker != null ? tracker.getAllRecords().stream().mapToInt(ViolationRecord::totalViolations).sum() : 0;
+            int online = Bukkit.getOnlinePlayers().size();
+            double tps = Math.min(20.0, Bukkit.getTPS()[0]);
+            int todayD = stats != null ? stats.getTodayDetections() : 0;
+            int todayP = stats != null ? stats.getTodayPunishments() : 0;
+
+            String metrics = "# HELP antilitematica_detections_total Total detections\n"
+                    + "# TYPE antilitematica_detections_total counter\n"
+                    + "antilitematica_detections_total " + totalV + "\n"
+                    + "# HELP antilitematica_players_online Current online players\n"
+                    + "# TYPE antilitematica_players_online gauge\n"
+                    + "antilitematica_players_online " + online + "\n"
+                    + "# HELP antilitematica_tps Current server TPS\n"
+                    + "# TYPE antilitematica_tps gauge\n"
+                    + "antilitematica_tps " + String.format("%.1f", tps) + "\n"
+                    + "# HELP antilitematica_detections_today Today's detections\n"
+                    + "# TYPE antilitematica_detections_today gauge\n"
+                    + "antilitematica_detections_today " + todayD + "\n"
+                    + "# HELP antilitematica_punishments_today Today's punishments\n"
+                    + "# TYPE antilitematica_punishments_today gauge\n"
+                    + "antilitematica_punishments_today " + todayP + "\n";
+            sendResponse(exchange, 200, "text/plain; charset=utf-8", metrics.getBytes(StandardCharsets.UTF_8));
+        }
     }
 
     private static record Session(String token, long expiry) {}

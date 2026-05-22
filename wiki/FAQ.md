@@ -92,9 +92,53 @@ The web dashboard is a built-in monitoring panel accessible via browser. See [We
 
 ### Q: How do I update the plugin?
 
-**Automatic:** Configure `auto_build` in config.yml and run `/al build`, or set a nightly time for automatic updates.
+**Automatic:** Configure `auto_build` in config.yml and run `/al build`, or set a nightly time for automatic updates. The plugin will also try to auto-replace the running JAR.
 
 **Manual:** Download from [GitHub Releases](https://github.com/ALingqing/AntiLitematica/releases) and replace the JAR.
+
+---
+
+### Q: Can I skip detection in certain worlds?
+
+Yes. Use the `world_whitelist` config section. Players in whitelisted worlds bypass all checks entirely.
+
+```yaml
+world_whitelist:
+  enabled: true
+  worlds:
+    - "build_world"
+    - "creative"
+```
+
+---
+
+### Q: How do I exempt normal commands from being blocked?
+
+Use the `allowed_commands` list in `command_guard`:
+
+```yaml
+command_guard:
+  allowed_commands:
+    - "/msg"
+    - "/tell"
+```
+
+Commands in this list are never blocked, even if they match a blocked_commands pattern.
+
+---
+
+### Q: What statistics does the plugin track?
+
+The plugin tracks daily detection counts and punishment counts in `stats.yml`. You can view today's stats in the Web Dashboard overview. Data is auto-cleaned after the configured retention period.
+
+---
+
+### Q: What monitoring options are available?
+
+- **Web Dashboard** at http://your-ip:25418 with real-time SSE updates
+- **Admin audit log** in audit.log (viewable in Web Dashboard)
+- **Prometheus metrics** at /api/metrics (for Grafana)
+- **Console logs** and dedicated detection log file
 
 ---
 

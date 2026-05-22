@@ -284,3 +284,11 @@ View metrics: [https://bstats.org/plugin/bukkit/AntiLitematica/31012](https://bs
 - Added `isDetectionLogEnabled()`
 - Added `getStorageType()`
 - Added `isCommandGuardEnabled()`
+- Added StatsTracker for daily detection/punishment statistics
+- Added AuditLogger for admin action logging
+- Added world whitelist support for per-world detection skipping
+- Added command guard allowlist (allowed_commands)
+- Added SSE real-time push to Web Dashboard
+- Added Prometheus metrics endpoint (/api/metrics)
+- Added batch kick command (/al kickall)
+- Added violation ranking API

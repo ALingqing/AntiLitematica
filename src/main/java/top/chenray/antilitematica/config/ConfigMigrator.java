@@ -16,7 +16,7 @@ import org.bukkit.plugin.Plugin;
  */
 public final class ConfigMigrator {
 
-    private static final int CURRENT_VERSION = 2;
+    private static final int CURRENT_VERSION = 3;
 
     private final Plugin plugin;
     private final Logger logger;
@@ -66,7 +66,22 @@ public final class ConfigMigrator {
             changed |= addDefault(cfg, "graduated_punishment.mysql.database", "antilitematica");
             changed |= addDefault(cfg, "graduated_punishment.mysql.user", "root");
             changed |= addDefault(cfg, "graduated_punishment.mysql.password", "");
-            // Update storage comment is implicit, keep existing value
+        }
+
+        if (oldVersion < 3) {
+            // v3: command_guard.allowed_commands, world_whitelist, stats
+            changed |= addDefault(cfg, "command_guard.allowed_commands", java.util.List.of("/msg", "/tell", "/r"));
+            changed |= addDefault(cfg, "world_whitelist.enabled", false);
+            changed |= addDefault(cfg, "world_whitelist.worlds", java.util.List.of());
+            changed |= addDefault(cfg, "stats.enabled", true);
+            changed |= addDefault(cfg, "stats.record_retention_days", 30);
+            changed |= addDefault(cfg, "stats.stats_retention_days", 90);
+            // Re-add auto_build defaults if missing (was added in v1)
+            changed |= addDefault(cfg, "auto_build.enabled", false);
+            changed |= addDefault(cfg, "auto_build.output_path", "");
+            changed |= addDefault(cfg, "auto_build.nightly_time", "03:00");
+            changed |= addDefault(cfg, "auto_build.auto_reload", false);
+            changed |= addDefault(cfg, "auto_build.post_build_command", "");
         }
 
         // Set current version

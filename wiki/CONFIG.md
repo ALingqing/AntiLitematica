@@ -107,6 +107,10 @@ command_guard:
   enabled: true
   blocked_commands:
     - "/setblock"
+  allowed_commands:
+    - "/msg"
+    - "/tell"
+    - "/r"
   max_per_window: 8
   window_ms: 3000
   violations:
@@ -116,12 +120,30 @@ command_guard:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `enabled` | `true` | Enable command guard |
-| `blocked_commands` | `["/setblock"]` | Commands to block (prefix match) |
-| `max_per_window` | `8` | Max commands within window before flagging |
-| `window_ms` | `3000` | Command monitoring window (ms) |
-| `violations.window_ms` | `8000` | Violation counting window (ms) |
-| `violations.kick_at` | `5` | Violations before kicking |
+| enabled | true | Enable command guard |
+| blocked_commands | ["/setblock"] | Commands to block (prefix match) |
+| allowed_commands | ["/msg","/tell","/r"] | Commands exempt from blocking (takes priority) |
+| max_per_window | 8 | Max commands within window before flagging |
+| window_ms | 3000 | Command monitoring window (ms) |
+| violations.window_ms | 8000 | Violation counting window (ms) |
+| violations.kick_at | 5 | Violations before kicking |
+
+---
+
+## World Whitelist
+
+```yaml
+world_whitelist:
+  enabled: false
+  worlds: []
+```
+
+Players in whitelisted worlds skip all detection checks. Useful for build/creative worlds.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| enabled | false | Enable world whitelist |
+| worlds | [] | World names to skip (case-insensitive) |
 
 ---
 
@@ -238,7 +260,7 @@ integration:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `false` | Enable anti-cheat integration |
-| `type` | `"none"` | Integration type: `none`, `grim`, `vulcan`, or `matrix` |
+| type | none | Integration type: none, grim, vulcan, or matrix (reflection-based) |
 | `violation_level` | `10` | Violation level to report |
 | `check_prefix` | `"AntiLitematica"` | Check name prefix |
 
@@ -289,8 +311,27 @@ detection_log:
 
 | Option | Default | Description |
 |--------|---------|-------------|
-| `enabled` | `false` | Enable dedicated detection log file |
-| `file` | `"detections.log"` | Log file name (relative to plugin folder, daily rotation) |
+| enabled | false | Enable dedicated detection log file |
+| file | detections.log | Log file name (relative to plugin folder, daily rotation) |
+
+---
+
+## Statistics & Cleanup
+
+```yaml
+stats:
+  enabled: true
+  record_retention_days: 30
+  stats_retention_days: 90
+```
+
+Tracks daily detection/punishment counts. Auto-cleans old records.
+
+| Option | Default | Description |
+|--------|---------|-------------|
+| enabled | true | Enable statistics tracking |
+| record_retention_days | 30 | Days to keep violation records (0 = forever) |
+| stats_retention_days | 90 | Days to keep daily stats (0 = forever) |
 
 ---
 
@@ -315,15 +356,17 @@ auto_build:
 
 ---
 
-## Locale
+## Language
 
 ```yaml
-locale: "zh_CN"
+lang: "zh_CN"
+auto_locale: true
 ```
 
-Options: `zh_CN`, `en_US`, `zh_TW`, `default`
+- `lang` -- Server default language (fallback). Options: zh_CN / en_US / zh_TW
+- `auto_locale` -- Auto-detect each player's client language (50+ locales supported). Falls back through chain: player locale, server default, messages.yml.
 
-The plugin loads `messages_{locale}.yml` with fallback to `messages.yml`.
+Language files are stored in the `lang/` folder. To add a new language, create `lang/messages_xx_XX.yml`.
 
 ---
 

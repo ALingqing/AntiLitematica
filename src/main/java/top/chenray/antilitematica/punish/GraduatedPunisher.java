@@ -21,6 +21,7 @@ import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.util.DiscordWebhook;
 import top.chenray.antilitematica.util.Msg;
 import top.chenray.antilitematica.util.OneBotNotifier;
+import top.chenray.antilitematica.util.StatsTracker;
 
 /**
  * Graduated punishment system: escalates penalties based on violation count within a time window.
@@ -157,6 +158,13 @@ public final class GraduatedPunisher {
 
       // Discord notification
       sendDiscordNotification(player, channel, why, actionName, reason);
+
+      // ---- Stats tracking ----
+      StatsTracker stats = this.plugin.getStatsTracker();
+      if (stats != null) {
+         stats.recordDetection();
+         stats.recordPunishment();
+      }
 
       // ---- Detection Log ----
       DetectionLogger detLog = this.plugin.getDetectionLogger();
