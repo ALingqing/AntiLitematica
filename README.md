@@ -164,13 +164,13 @@ mvn clean package
 # Output: target/AntiLitematica-<version>.jar
 ```
 
-Built with Java 21 and Maven 3. CI via GitHub Actions.
+Built with Java 25 and Maven 3. CI via GitHub Actions.
 
 ## Compatibility
 
 - **Server:** Paper, Spigot, Purpur (1.12.2+)
 - **Paper API:** 26.1.2+ (Minecraft 1.21.11+)
-- **Java:** 21+
+- **Java:** 25+
 - **Geyser/Floodgate:** Fully supported, Bedrock players auto-exempted
 - **Ban Plugins:** LiteBans, AdvancedBan, EssentialsX
 - **Anti-Cheat:** GrimAC, Vulcan, Matrix

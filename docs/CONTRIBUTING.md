@@ -8,7 +8,7 @@ Thanks for your interest in contributing to AntiLitematica!
 
 ### Prerequisites
 
-- Java 21+ (JDK)
+- Java 25+ (JDK)
 - Apache Maven 3.8+
 - Git
 - A Paper/Spigot test server (optional but recommended)

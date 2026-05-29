@@ -11,6 +11,7 @@
 ### Paper API Update
 
 - Updated to **Paper API 26.1.2.build.66-stable** (Minecraft 1.21.11+).
+- **Java requirement raised to 25** (Paper API 26.1.2 requires Java 25).
 
 ### Performance Optimizations
 
