@@ -13,7 +13,6 @@ import top.chenray.antilitematica.punish.ViolationRecord;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.UUID;
-import java.util.concurrent.CompletableFuture;
 
 /**
  * Implementation of the AntiLitematicaAPI.
@@ -252,21 +251,6 @@ public final class AntiLitematicaAPIImpl implements AntiLitematicaAPI {
         if (s == null || s.detection() == null) return "";
         String reason = s.detection().reason();
         return reason != null ? reason : "";
-    }
-
-    // ==================== Auto-Update ====================
-
-    @Override
-    public boolean isAutoUpdateEnabled() {
-        Settings.AutoBuild ab = plugin.settings().autoBuild();
-        return ab != null && ab.enabled();
-    }
-
-    @Override
-    public CompletableFuture<Boolean> triggerAutoUpdate() {
-        var mgr = plugin.getAutoBuildManager();
-        if (mgr == null) return CompletableFuture.completedFuture(false);
-        return mgr.downloadLatestAsync();
     }
 
     @Override

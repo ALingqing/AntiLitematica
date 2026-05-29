@@ -2,6 +2,7 @@ package top.chenray.antilitematica.punish;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -32,12 +33,46 @@ public final class GraduatedPunisher {
    private final PunishmentTracker tracker;
    private BanPluginHook hook;
    private final Map<UUID, Integer> notifiedLevel = new ConcurrentHashMap<>();
+   /** Cached staff notify set. */
+   private final Set<UUID> staffNotify = ConcurrentHashMap.newKeySet();
+   /** Cached DiscordWebhook instance (recreated on reload). */
+   private volatile DiscordWebhook cachedWebhook;
 
    public GraduatedPunisher(AntiLitematicaPlugin plugin, Settings settings, PunishmentTracker tracker) {
       this.plugin = plugin;
       this.settings = settings;
       this.tracker = tracker;
       this.resolveHook();
+      this.cacheDiscordWebhook();
+      this.cacheStaffNotify();
+   }
+
+   /** Cache DiscordWebhook instance to avoid constructing it on every punishment. */
+   private void cacheDiscordWebhook() {
+      Settings.Discord dc = this.settings.discord();
+      if (dc != null && dc.enabled() && dc.webhookUrl() != null && !dc.webhookUrl().isEmpty()) {
+         this.cachedWebhook = new DiscordWebhook(
+               this.plugin, dc.webhookUrl(), dc.username(),
+               dc.avatarUrl() != null ? dc.avatarUrl() : "",
+               dc.embedTitle(), dc.embedColor(),
+               dc.footerText() != null ? dc.footerText() : "",
+               dc.proxyHost() != null ? dc.proxyHost() : "",
+               dc.proxyPort(),
+               dc.proxyUsername() != null ? dc.proxyUsername() : "",
+               dc.proxyPassword() != null ? dc.proxyPassword() : ""
+         );
+      } else {
+         this.cachedWebhook = null;
+      }
+   }
+
+   private void cacheStaffNotify() {
+      staffNotify.clear();
+      for (Player online : Bukkit.getOnlinePlayers()) {
+         if (online.hasPermission("antilitematica.notify")) {
+            staffNotify.add(online.getUniqueId());
+         }
+      }
    }
 
    private void resolveHook() {
@@ -138,13 +173,14 @@ public final class GraduatedPunisher {
          Bukkit.broadcast(msg, "bukkit.broadcast.user");
       }
 
-      // Staff alert
+      // Staff alert (using cached set instead of iterating all players)
       if (pl.staffAlert()) {
          String alert = Msg.color("&c[AntiLitematica] &e" + player.getName() + " &7punished (&f" +
                actionName + "&7): &f" + reason + " &8[count=" + record.count() + ",total=" + record.totalViolations() + "]");
-         for (Player online : Bukkit.getOnlinePlayers()) {
-            if (online.hasPermission("antilitematica.notify")) {
-               online.sendMessage(alert);
+         for (UUID uid : staffNotify) {
+            Player staff = Bukkit.getPlayer(uid);
+            if (staff != null && staff.isOnline()) {
+               staff.sendMessage(alert);
             }
          }
       }
@@ -156,7 +192,7 @@ public final class GraduatedPunisher {
                integ.violationLevel(), "graduated punishment level=" + level + " action=" + actionName);
       }
 
-      // Discord notification
+      // Discord notification (using cached webhook)
       sendDiscordNotification(player, channel, why, actionName, reason);
 
       // ---- Stats tracking ----
@@ -187,6 +223,8 @@ public final class GraduatedPunisher {
    public void reload() {
       this.resolveHook();
       this.notifiedLevel.clear();
+      this.cacheDiscordWebhook();
+      this.cacheStaffNotify();
    }
 
    private boolean isWhitelisted(Player player) {
@@ -221,26 +259,10 @@ public final class GraduatedPunisher {
 
    private void sendDiscordNotification(Player player, String channel, String why, String action, String reason) {
       String reasonText = reason != null ? reason : "Unknown";
-      // ---- Discord Webhook ----
-      Settings.Discord dc = this.settings.discord();
-      if (dc != null && dc.enabled() && dc.webhookUrl() != null && !dc.webhookUrl().isEmpty()) {
-         if (dc.notifyOnPunish()) {
-            DiscordWebhook webhook = new DiscordWebhook(
-                  this.plugin,
-                  dc.webhookUrl(),
-                  dc.username(),
-                  dc.avatarUrl() != null ? dc.avatarUrl() : "",
-                  dc.embedTitle(),
-                  dc.embedColor(),
-                  dc.footerText() != null ? dc.footerText() : "",
-                  dc.proxyHost() != null ? dc.proxyHost() : "",
-                  dc.proxyPort(),
-                  dc.proxyUsername() != null ? dc.proxyUsername() : "",
-                  dc.proxyPassword() != null ? dc.proxyPassword() : ""
-            );
-            webhook.sendDetection(player.getName(), player.getUniqueId().toString(), channel,
-                  reasonText, action);
-         }
+      // ---- Discord Webhook (cached instance) ----
+      DiscordWebhook wh = this.cachedWebhook;
+      if (wh != null) {
+         wh.sendDetection(player.getName(), player.getUniqueId().toString(), channel, reasonText, action);
       }
 
       // ---- OneBot (QQ) notification ----

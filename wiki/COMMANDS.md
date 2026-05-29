@@ -12,7 +12,6 @@ All commands use the base `/antilitematica` or its alias `/al`.
 | `/al gui` | Open configuration GUI (in-game only) | antilitematica.admin |
 | `/al status` | View current plugin settings | antilitematica.admin |
 | `/al update` | Check for new versions on GitHub | antilitematica.admin |
-| `/al build` | Download latest release from GitHub | antilitematica.admin |
 | `/al reset <player\|all\|expired>` | Reset violation records | antilitematica.admin |
 | `/al history <player> [page]` | View violation history with pagination | antilitematica.admin |
 | `/al export` | Export violation records to JSON file | antilitematica.admin |
@@ -36,9 +35,6 @@ Displays current settings: enabled, detection action, storage type, signal check
 
 #### `/al update`
 Checks GitHub for new releases. Shows version and download link if available.
-
-#### `/al build`
-Downloads latest release JAR from GitHub to configured output_path (auto-detects plugins folder if empty). Auto-replaces running JAR.
 
 #### `/al reset`
 - `/al reset <player>` -- Reset a specific player's record

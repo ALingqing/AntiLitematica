@@ -15,23 +15,19 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 ├──────────┬──────────┬──────────┬──────────┬──────────────────┤
 │ Detection│  Guards  │Punishment│Integration│   Web/Utility   │
 ├──────────┼──────────┼──────────┼──────────┼──────────────────┤
-│ModChannel│Placement │Punisher  │GrimAC    │  DashboardServer │
+│ModChannel│Placement │Punisher  │GrimAC    │  DiscordWebhook  │
 │Detector  │Guard     │          │Vulcan    │                  │
-│          │          │Graduated │Matrix    │  DiscordWebhook  │
+│          │          │Graduated │Matrix    │  UpdateChecker   │
 │Protocol  │Command   │Punisher  │NoOp      │                  │
-│LibBridge │Guard     │          │          │  UpdateChecker   │
-│          │          │Punishment│          │                  │
-│          │          │Tracker   │          │  AutoBuildManager│
-│          │          │          │          │                  │
-│          │          │          │          │  DetectionLogger │
-│          │          │          │          │  ConfigMigrator  │
-│          │          │          │          │  StatsTracker    │
+│LibBridge │Guard     │          │          │  DetectionLogger │
+│          │          │Punishment│          │  ConfigMigrator  │
+│          │          │Tracker   │          │  StatsTracker    │
 │          │          │          │          │  AuditLogger     │
 └──────────┴──────────┴──────────┴──────────┴──────────────────┘
          │            │          │                    │
          ▼            ▼          ▼                    ▼
-     Bukkit Events   Scheduler   SQLite/MySQL/   HTTP Server
-     ProtocolLib     API         Memory           GitHub API
+     Bukkit Events   Scheduler   SQLite/MySQL/   GitHub API
+     ProtocolLib     API         Memory
 ```
 
 ---
@@ -44,8 +40,10 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 - **Package:** `top.chenray.antilitematica.detection`
 - **Purpose:** Listens for plugin channel registration and incoming payloads
 - **Mechanism:** Bukkit `PlayerRegisterChannelEvent` + `PluginMessageListener`
-- **Monitored Channels:** Configurable via `config.yml` → `detection.channels`
+- **Monitored Channels:** Configurable via `config.yml` → `detection.channels`, plus auto-registered known Litematica channels (litematica:main, litematica:hello, litematica:place, etc.)
 - **Servux Blocking:** Actively blocks incoming `servux:litematics` payloads to prevent projection data sync
+- **Payload Inspection:** Deep packet analysis for servux metadata (NBT version strings), litematica:main data transfers
+- **Channel Name Resolution:** Resolves raw channel names to human-readable mod names (e.g., "Litematica (Servux)")
 
 #### `ProtocolLibBridge`
 - **Package:** `top.chenray.antilitematica.protocol`
@@ -53,8 +51,8 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 - **Mechanism:** ProtocolLib packet interceptors
 - **Signals:**
   - **Servux Metadata:** Catches NBT queries containing "litematica" version strings
-  - **EasyPlace:** Detects abnormal hit-vector values (hitVec relative to blockPos exceeds normal range)
-  - **NBT Query:** Detects debug NBT queries (block entity/entity tag queries)
+  - **EasyPlace:** Detects abnormal hit-vector values (hitVec relative to blockPos exceeds normal range). Uses consecutive hit tracking (3 hits per 10s window) to reduce false positives
+  - **NBT Query:** Detects debug NBT queries (block entity/entity tag queries), includes transaction ID and position in detection reason
 
 ### 2. Guard Layer
 
@@ -125,18 +123,6 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 
 ### 6. Web & Utility
 
-#### `DashboardServer`
-- **Package:** `top.chenray.antilitematica.web`
-- **Technology:** JDK built-in `HttpServer` (no extra dependencies)
-- **Features:** Overview, player list, violation records, quick settings
-- **Languages:** zh_CN, en_US, zh_TW
-
-#### `AutoBuildManager`
-- **Package:** `top.chenray.antilitematica.build`
-- **Purpose:** Downloads latest release JAR from GitHub Releases
-- **Auto-detect:** Automatically finds plugins folder if `output_path` is empty
-- **Trigger:** Nightly schedule or `/al build` command
-
 #### `DetectionLogger`
 - **Package:** `top.chenray.antilitematica.util`
 - **Purpose:** Writes detection events to a dedicated `detections.log` file
@@ -156,7 +142,6 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 #### `AuditLogger`
 - **Package:** `top.chenray.antilitematica.util`
 - **Purpose:** Logs all admin actions (config changes, resets, kicks) to audit.log
-- **Viewable:** In Web Dashboard audit tab
 
 #### `UpdateChecker`
 - **Package:** `top.chenray.antilitematica.update`

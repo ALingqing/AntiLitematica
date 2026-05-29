@@ -43,12 +43,12 @@ detection:
 | Option | Default | Description |
 |--------|---------|-------------|
 | `enabled` | `true` | Enable/disable detection system |
-| `channels` | `["servux:litematics"]` | Plugin channels to monitor |
+| `channels` | `["servux:litematics"]` | Plugin channels to monitor. Known Litematica channels (litematica:main, litematica:hello, litematica:place, schematica) are auto-registered even if not in this list |
 | `block_servux` | `true` | Block `servux:litematics` payloads |
 | `commands` | `[]` | Console commands to execute on detection (action=COMMANDS) |
 | `kick_after_commands` | `true` | Kick after executing commands |
 | `signals.servux_metadata.enabled` | `true` | Detect Litematica Servux metadata requests |
-| `signals.easy_place.enabled` | `true` | Detect EasyPlace protocol abuse |
+| `signals.easy_place.enabled` | `true` | Detect EasyPlace protocol abuse (requires 3+ hits within 10s to reduce false positives) |
 | `signals.easy_place.rel_min` | `-0.5` | Minimum relative hit vector (vanilla ~0) |
 | `signals.easy_place.rel_max` | `1.5` | Maximum relative hit vector (vanilla ~1) |
 | `signals.easy_place.cancel_packet` | `false` | Cancel the EasyPlace packet instead of just detecting |
@@ -287,20 +287,6 @@ Auto-adjusts detection sensitivity based on server TPS and player count. When TP
 
 ---
 
-## Web Dashboard
-
-```yaml
-web_dashboard:
-  enabled: false
-  port: 25418
-  password: "admin"
-  locale: "zh_CN"
-```
-
-See [Web Dashboard Guide](WEB_DASHBOARD.md) for details.
-
----
-
 ## Detection Log
 
 ```yaml
@@ -332,27 +318,6 @@ Tracks daily detection/punishment counts. Auto-cleans old records.
 | enabled | true | Enable statistics tracking |
 | record_retention_days | 30 | Days to keep violation records (0 = forever) |
 | stats_retention_days | 90 | Days to keep daily stats (0 = forever) |
-
----
-
-## Auto Update
-
-```yaml
-auto_build:
-  enabled: false
-  output_path: ""
-  nightly_time: "03:00"
-  auto_reload: false
-  post_build_command: ""
-```
-
-| Option | Default | Description |
-|--------|---------|-------------|
-| `enabled` | `false` | Enable auto-update from GitHub Releases |
-| `output_path` | `""` | Server plugins folder path (auto-detected if empty) |
-| `nightly_time` | `"03:00"` | Nightly check time (24h format), empty to disable |
-| `auto_reload` | `false` | Run `/plugman reload AntiLitematica` after download |
-| `post_build_command` | `""` | Custom command after download (overrides auto_reload) |
 
 ---
 

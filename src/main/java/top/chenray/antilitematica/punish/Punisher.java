@@ -36,99 +36,133 @@ public final class Punisher {
       }
 
       // ---- Whitelist check ----
-      if (isWhitelisted(plugin, settings, player)) {
+      if (isWhitelisted(settings, player)) {
          plugin.getLogger().info("[Whitelist] " + player.getName() + " triggered detection (" + why + ") but is whitelisted — logging only.");
          return;
       }
+
       // Use graduated punishment system if enabled
-      if (settings.graduatedPunishment() != null && settings.graduatedPunishment().enabled()) {
+      if (isGraduatedEnabled(settings)) {
          plugin.getGraduatedPunisher().punish(player, channel, why);
          return;
       }
 
       // Fallback to legacy single-action logic
+      executeLegacyAction(plugin, settings, player, channel, why);
+   }
+
+   /** Check if graduated punishment is configured and enabled. */
+   private static boolean isGraduatedEnabled(Settings settings) {
+      Settings.GraduatedPunishment gp = settings.graduatedPunishment();
+      return gp != null && gp.enabled();
+   }
+
+   /** Execute the legacy single-action (LOG/KICK/BAN/COMMANDS) fallback. */
+   private static void executeLegacyAction(AntiLitematicaPlugin plugin, Settings settings,
+                                           Player player, String channel, String why) {
       Settings.Detection det = settings.detection();
-      if (det != null && det.enabled()) {
-         String reason = det.reason() != null ? det.reason() : "Forbidden client mod detected.";
-         String var10000 = Msg.prefix(settings);
-         String kickMsg = Msg.color(var10000 + settings.messages().kick());
-         if (settings.integration().enabled()) {
-            Settings.Integration integ = settings.integration();
-            plugin.getIntegrationManager().flag(player, integ.checkPrefix() + ":" + channel, integ.violationLevel(), why);
-         }
+      if (det == null || !det.enabled()) return;
 
-         boolean punishExecuted = false;
-         String actionName = "LOG";
-         switch (det.action()) {
-            case LOG:
-               plugin.getLogger().info("Detected blocked channel '" + channel + "' from " + player.getName() + " via " + why);
-               actionName = "LOG";
-               break;
-            case KICK:
-               plugin.getLogger().info("Kicking " + player.getName() + " (blocked channel '" + channel + "' via " + why + ")");
-               runCommands(plugin, det.commands(), player, channel, why, reason);
-               punishExecuted = true;
-               actionName = "KICK";
-               Bukkit.getScheduler().runTask(plugin, () -> {
-                  if (player.isOnline() && !player.hasPermission("antilitematica.bypass")) {
-                     player.kickPlayer(kickMsg);
-                  }
+      String reason = (det.reason() != null) ? det.reason() : "Forbidden client mod detected.";
+      String kickMsg = Msg.color(Msg.prefix(settings) + settings.messages().kick());
+      flagAntiCheat(plugin, settings, player, channel, why);
 
-               });
-               break;
-            case BAN:
-               plugin.getLogger().info("Banning " + player.getName() + " (blocked channel '" + channel + "' via " + why + ")");
-               runCommands(plugin, det.commands(), player, channel, why, reason);
-               punishExecuted = true;
-               actionName = "BAN";
-               Bukkit.getScheduler().runTask(plugin, () -> {
-                  if (player.isOnline() && !player.hasPermission("antilitematica.bypass")) {
-                     Bukkit.getBanList(Type.NAME).addBan(player.getName(), reason, (Date)null, plugin.getName());
-                     player.kickPlayer(kickMsg);
-                  }
+      boolean punishExecuted = false;
+      String actionName = "LOG";
 
-               });
-               break;
-            case COMMANDS:
-               plugin.getLogger().info("Detected blocked channel '" + channel + "' from " + player.getName() + " via " + why + " (commands)");
-               runCommands(plugin, det.commands(), player, channel, why, reason);
-               punishExecuted = true;
-               actionName = "COMMANDS";
-               if (det.kickAfterCommands()) {
-                  Bukkit.getScheduler().runTask(plugin, () -> {
-                     if (player.isOnline() && !player.hasPermission("antilitematica.bypass")) {
-                        player.kickPlayer(kickMsg);
-                     }
-
-                  });
-               }
-         }
-
-         sendDiscordNotification(plugin, settings, player, channel, why, actionName, punishExecuted);
-
-         // ---- Stats tracking ----
-         StatsTracker stats = plugin.getStatsTracker();
-         if (stats != null) {
-            stats.recordDetection();
-            if (punishExecuted) stats.recordPunishment();
-         }
-
-         // ---- Detection Log ----
-         DetectionLogger detLog = plugin.getDetectionLogger();
-         if (detLog != null) {
-            detLog.log(player.getName(), player.getUniqueId().toString(), channel, reason, actionName, why);
-         }
-
-         // ---- Fire PunishmentEvent ----
-         try {
-            PunishmentEvent.PunishmentAction pa = parsePunishmentAction(actionName);
-            PunishmentEvent punishmentEvent = new PunishmentEvent(player, channel, reason, pa, 0, "legacy");
-            Bukkit.getPluginManager().callEvent(punishmentEvent);
-         } catch (Exception ignored) {
-            // event listener errors must not break punishment logic
-         }
+      switch (det.action()) {
+         case LOG:
+            plugin.getLogger().info("Detected blocked channel '" + channel + "' from " + player.getName() + " via " + why);
+            break;
+         case KICK:
+            actionName = "KICK";
+            punishExecuted = true;
+            plugin.getLogger().info("Kicking " + player.getName() + " (blocked channel '" + channel + "' via " + why + ")");
+            runCommands(plugin, det.commands(), player, channel, why, reason);
+            scheduleKick(plugin, player, kickMsg);
+            break;
+         case BAN:
+            actionName = "BAN";
+            punishExecuted = true;
+            plugin.getLogger().info("Banning " + player.getName() + " (blocked channel '" + channel + "' via " + why + ")");
+            runCommands(plugin, det.commands(), player, channel, why, reason);
+            scheduleBan(plugin, player, reason, kickMsg);
+            break;
+         case COMMANDS:
+            actionName = "COMMANDS";
+            punishExecuted = true;
+            plugin.getLogger().info("Detected blocked channel '" + channel + "' from " + player.getName() + " via " + why + " (commands)");
+            runCommands(plugin, det.commands(), player, channel, why, reason);
+            if (det.kickAfterCommands()) {
+               scheduleKick(plugin, player, kickMsg);
+            }
+            break;
       }
 
+      sendNotifications(plugin, settings, player, channel, why, actionName, punishExecuted);
+      trackStats(plugin, punishExecuted);
+      logDetection(plugin, player, channel, reason, actionName, why);
+      firePunishmentEvent(player, channel, reason, actionName);
+   }
+
+   /** Flag player in anti-cheat integration if enabled. */
+   private static void flagAntiCheat(AntiLitematicaPlugin plugin, Settings settings,
+                                     Player player, String channel, String why) {
+      if (settings.integration().enabled()) {
+         Settings.Integration integ = settings.integration();
+         plugin.getIntegrationManager().flag(player,
+               integ.checkPrefix() + ":" + channel, integ.violationLevel(), why);
+      }
+   }
+
+   /** Schedule a kick on the main thread. */
+   private static void scheduleKick(AntiLitematicaPlugin plugin, Player player, String kickMsg) {
+      Bukkit.getScheduler().runTask(plugin, () -> {
+         if (player.isOnline() && !player.hasPermission("antilitematica.bypass")) {
+            player.kickPlayer(kickMsg);
+         }
+      });
+   }
+
+   /** Schedule a ban + kick on the main thread. */
+   private static void scheduleBan(AntiLitematicaPlugin plugin, Player player,
+                                    String reason, String kickMsg) {
+      Bukkit.getScheduler().runTask(plugin, () -> {
+         if (player.isOnline() && !player.hasPermission("antilitematica.bypass")) {
+            Bukkit.getBanList(Type.NAME).addBan(player.getName(), reason, null, plugin.getName());
+            player.kickPlayer(kickMsg);
+         }
+      });
+   }
+
+   /** Track detection/punishment statistics. */
+   private static void trackStats(AntiLitematicaPlugin plugin, boolean punishExecuted) {
+      StatsTracker stats = plugin.getStatsTracker();
+      if (stats != null) {
+         stats.recordDetection();
+         if (punishExecuted) stats.recordPunishment();
+      }
+   }
+
+   /** Write to the dedicated detection log file. */
+   private static void logDetection(AntiLitematicaPlugin plugin, Player player,
+                                     String channel, String reason, String actionName, String why) {
+      DetectionLogger detLog = plugin.getDetectionLogger();
+      if (detLog != null) {
+         detLog.log(player.getName(), player.getUniqueId().toString(), channel, reason, actionName, why);
+      }
+   }
+
+   /** Fire the post-punishment event. */
+   private static void firePunishmentEvent(Player player, String channel,
+                                            String reason, String actionName) {
+      try {
+         PunishmentEvent.PunishmentAction pa = parsePunishmentAction(actionName);
+         PunishmentEvent punishmentEvent = new PunishmentEvent(player, channel, reason, pa, 0, "legacy");
+         Bukkit.getPluginManager().callEvent(punishmentEvent);
+      } catch (Exception ignored) {
+         // event listener errors must not break punishment logic
+      }
    }
 
    private static PunishmentEvent.PunishmentAction parsePunishmentAction(String action) {
@@ -139,33 +173,42 @@ public final class Punisher {
       }
    }
 
-   private static void sendDiscordNotification(AntiLitematicaPlugin plugin, Settings settings, Player player, String channel, String why, String action, boolean punishExecuted) {
+   /**
+    * Send Discord webhook and/or OneBot (QQ) notifications.
+    * DiscordWebhook is created on demand (lazily) to avoid construction when Discord is disabled.
+    */
+   private static void sendNotifications(AntiLitematicaPlugin plugin, Settings settings,
+                                          Player player, String channel, String why,
+                                          String action, boolean punishExecuted) {
       String reason = why != null ? why : "Unknown";
-      // ---- Discord Webhook ----
-      Settings.Discord dc = settings.discord();
-      if (dc != null && dc.enabled() && dc.webhookUrl() != null && !dc.webhookUrl().isEmpty()) {
-         if (!punishExecuted || dc.notifyOnPunish()) {
-            if (punishExecuted || dc.notifyOnDetection()) {
-               // Compatible with newer DiscordWebhook constructor parameters
-               DiscordWebhook webhook = new DiscordWebhook(
-                   plugin,
-                   dc.webhookUrl(),
-                   dc.username(),
-                   dc.avatarUrl() != null ? dc.avatarUrl() : "",
-                   dc.embedTitle(),
-                   dc.embedColor(),
-                   dc.footerText() != null ? dc.footerText() : "",
-                   dc.proxyHost() != null ? dc.proxyHost() : "",
-                   dc.proxyPort(),
-                   dc.proxyUsername() != null ? dc.proxyUsername() : "",
-                   dc.proxyPassword() != null ? dc.proxyPassword() : ""
-               );
-               webhook.sendDetection(player.getName(), player.getUniqueId().toString(), channel, reason, action);
-            }
-         }
-      }
+      sendDiscordIfNeeded(plugin, settings, player, channel, reason, action, punishExecuted);
+      sendOneBotIfNeeded(plugin, player, reason, action);
+   }
 
-      // ---- OneBot (QQ) notification ----
+   private static void sendDiscordIfNeeded(AntiLitematicaPlugin plugin, Settings settings,
+                                            Player player, String channel, String reason,
+                                            String action, boolean punishExecuted) {
+      Settings.Discord dc = settings.discord();
+      if (dc == null || !dc.enabled() || dc.webhookUrl() == null || dc.webhookUrl().isEmpty()) return;
+      if (!punishExecuted && !dc.notifyOnDetection()) return;
+      if (punishExecuted && !dc.notifyOnPunish()) return;
+
+      DiscordWebhook webhook = new DiscordWebhook(
+          plugin,
+          dc.webhookUrl(), dc.username(),
+          dc.avatarUrl() != null ? dc.avatarUrl() : "",
+          dc.embedTitle(), dc.embedColor(),
+          dc.footerText() != null ? dc.footerText() : "",
+          dc.proxyHost() != null ? dc.proxyHost() : "",
+          dc.proxyPort(),
+          dc.proxyUsername() != null ? dc.proxyUsername() : "",
+          dc.proxyPassword() != null ? dc.proxyPassword() : ""
+      );
+      webhook.sendDetection(player.getName(), player.getUniqueId().toString(), channel, reason, action);
+   }
+
+   private static void sendOneBotIfNeeded(AntiLitematicaPlugin plugin, Player player,
+                                           String reason, String action) {
       OneBotNotifier oneBot = plugin.getOneBotNotifier();
       if (oneBot != null) {
          oneBot.sendDetection(player.getName(), reason, action);
@@ -176,7 +219,7 @@ public final class Punisher {
     * Check if a player is on the violation whitelist.
     * If whitelist is enabled and player is listed, only log the detection.
     */
-   private static boolean isWhitelisted(AntiLitematicaPlugin plugin, Settings settings, Player player) {
+   private static boolean isWhitelisted(Settings settings, Player player) {
       Settings.Whitelist wl = settings.whitelist();
       if (wl == null || !wl.enabled()) return false;
       if (!wl.isLogOnly()) return false;

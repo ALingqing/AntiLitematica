@@ -54,7 +54,6 @@ AntiLitematica/
 │   ├── INSTALL.md                   # Installation guide
 │   ├── CONFIG.md                    # Configuration reference
 │   ├── COMMANDS.md                  # Commands & permissions
-│   ├── WEB_DASHBOARD.md             # Web dashboard guide
 │   └── FAQ.md                       # Frequently asked questions
 └── src/
     ├── main/

@@ -12,6 +12,15 @@ public class DynamicThresholdManager {
    private boolean enabled;
    private int taskId = -1;
 
+   // Cached config values, refreshed on reload()
+   private double tpsHigh = 19.5;
+   private double tpsLow = 16.0;
+   private int playersHigh = 50;
+   private int playersLow = 5;
+   private double minMul = 1.0;
+   private double maxMul = 2.0;
+   private int interval = 30;
+
    public DynamicThresholdManager(AntiLitematicaPlugin plugin) {
       this.plugin = plugin;
       reload();
@@ -20,6 +29,14 @@ public class DynamicThresholdManager {
    public void reload() {
       stop();
       this.enabled = plugin.getConfig().getBoolean("dynamic_threshold.enabled", false);
+      // Cache all config values once on reload
+      this.tpsHigh = plugin.getConfig().getDouble("dynamic_threshold.tps.high", 19.5);
+      this.tpsLow = plugin.getConfig().getDouble("dynamic_threshold.tps.low", 16.0);
+      this.playersHigh = plugin.getConfig().getInt("dynamic_threshold.players.high", 50);
+      this.playersLow = plugin.getConfig().getInt("dynamic_threshold.players.low", 5);
+      this.minMul = plugin.getConfig().getDouble("dynamic_threshold.multiplier.min", 1.0);
+      this.maxMul = plugin.getConfig().getDouble("dynamic_threshold.multiplier.max", 2.0);
+      this.interval = Math.max(5, plugin.getConfig().getInt("dynamic_threshold.check_interval_seconds", 30));
       if (enabled) {
          startTask();
       }
@@ -33,7 +50,6 @@ public class DynamicThresholdManager {
    }
 
    private void startTask() {
-      int interval = Math.max(5, plugin.getConfig().getInt("dynamic_threshold.check_interval_seconds", 30));
       taskId = new BukkitRunnable() {
          @Override
          public void run() {
@@ -43,14 +59,6 @@ public class DynamicThresholdManager {
    }
 
    private void recalculate() {
-      double tpsHigh = plugin.getConfig().getDouble("dynamic_threshold.tps.high", 19.5);
-      double tpsLow = plugin.getConfig().getDouble("dynamic_threshold.tps.low", 16.0);
-      int playersHigh = plugin.getConfig().getInt("dynamic_threshold.players.high", 50);
-      int playersLow = plugin.getConfig().getInt("dynamic_threshold.players.low", 5);
-
-      double minMul = plugin.getConfig().getDouble("dynamic_threshold.multiplier.min", 1.0);
-      double maxMul = plugin.getConfig().getDouble("dynamic_threshold.multiplier.max", 2.0);
-
       double tps = getRecentTPS();
       int online = Bukkit.getOnlinePlayers().size();
 

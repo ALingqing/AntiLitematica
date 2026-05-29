@@ -199,19 +199,6 @@ public interface AntiLitematicaAPI {
     @NotNull
     String getPunishmentReason();
 
-    // ==================== Auto-Update ====================
-
-    /**
-     * Check if auto-update is enabled.
-     */
-    boolean isAutoUpdateEnabled();
-
-    /**
-     * Trigger an automatic update check and download.
-     * Returns a CompletableFuture that completes with true if a new version was downloaded.
-     */
-    java.util.concurrent.CompletableFuture<Boolean> triggerAutoUpdate();
-
     // ==================== Detection Log ====================
 
     /**

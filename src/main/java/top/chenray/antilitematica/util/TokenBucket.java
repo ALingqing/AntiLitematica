@@ -17,18 +17,12 @@ public final class TokenBucket {
       return new TokenBucket(rate, capacity);
    }
 
-   public synchronized boolean tryConsume(int amount) {
-      if (amount <= 0) {
-         return true;
-      } else {
-         this.refill();
-         if (this.tokens + 1.0E-9 < (double)amount) {
-            return false;
-         } else {
-            this.tokens -= (double)amount;
-            return true;
-         }
-      }
+   public boolean tryConsume(int amount) {
+      if (amount <= 0) return true;
+      this.refill();
+      if (this.tokens + 1.0E-9 < (double)amount) return false;
+      this.tokens -= (double)amount;
+      return true;
    }
 
    private void refill() {
@@ -38,6 +32,5 @@ public final class TokenBucket {
          this.tokens = Math.min(this.capacity, this.tokens + (double)delta * this.refillPerMillis);
          this.lastRefillMs = now;
       }
-
    }
 }

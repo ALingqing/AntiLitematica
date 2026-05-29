@@ -84,15 +84,7 @@ If none are available, it falls back to Bukkit's native ban system.
 
 ---
 
-### Q: What is the web dashboard and how do I use it?
-
-The web dashboard is a built-in monitoring panel accessible via browser. See [Web Dashboard Guide](WEB_DASHBOARD.md) for full instructions.
-
----
-
 ### Q: How do I update the plugin?
-
-**Automatic:** Configure `auto_build` in config.yml and run `/al build`, or set a nightly time for automatic updates. The plugin will also try to auto-replace the running JAR.
 
 **Manual:** Download from [GitHub Releases](https://github.com/ALingqing/AntiLitematica/releases) and replace the JAR.
 
@@ -129,15 +121,13 @@ Commands in this list are never blocked, even if they match a blocked_commands p
 
 ### Q: What statistics does the plugin track?
 
-The plugin tracks daily detection counts and punishment counts in `stats.yml`. You can view today's stats in the Web Dashboard overview. Data is auto-cleaned after the configured retention period.
+The plugin tracks daily detection counts and punishment counts in `stats.yml`. Data is auto-cleaned after the configured retention period.
 
 ---
 
 ### Q: What monitoring options are available?
 
-- **Web Dashboard** at http://your-ip:25418 with real-time SSE updates
-- **Admin audit log** in audit.log (viewable in Web Dashboard)
-- **Prometheus metrics** at /api/metrics (for Grafana)
+- **Admin audit log** in audit.log
 - **Console logs** and dedicated detection log file
 
 ---

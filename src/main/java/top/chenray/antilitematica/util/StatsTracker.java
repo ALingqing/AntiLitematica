@@ -5,7 +5,9 @@ import java.time.LocalDate;
 import java.time.format.DateTimeFormatter;
 import java.util.Map;
 import java.util.concurrent.ConcurrentHashMap;
+import java.util.concurrent.atomic.AtomicInteger;
 
+import org.bukkit.Bukkit;
 import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
@@ -13,42 +15,82 @@ import org.bukkit.plugin.Plugin;
 /**
  * Tracks daily detection/punishment statistics and manages record retention.
  * Data stored in stats.yml in the plugin data folder.
+ * Uses batched saves to avoid disk I/O on every detection.
  */
 public final class StatsTracker {
 
     private static final DateTimeFormatter DAY_FMT = DateTimeFormatter.ofPattern("yyyy-MM-dd");
+    private static final long SAVE_INTERVAL_TICKS = 600L; // 30 seconds
 
     private final Plugin plugin;
     private final File statsFile;
     private FileConfiguration stats;
     private final int recordRetentionDays;
     private final int statsRetentionDays;
+    private final boolean enabled;
+    private final AtomicInteger pendingDetections = new AtomicInteger(0);
+    private final AtomicInteger pendingPunishments = new AtomicInteger(0);
+    private volatile boolean dirty = false;
+    private int saveTaskId = -1;
 
     public StatsTracker(Plugin plugin, boolean enabled, int recordRetentionDays, int statsRetentionDays) {
         this.plugin = plugin;
+        this.enabled = enabled;
         this.recordRetentionDays = Math.max(0, recordRetentionDays);
         this.statsRetentionDays = Math.max(0, statsRetentionDays);
         this.statsFile = new File(plugin.getDataFolder(), "stats.yml");
         this.stats = YamlConfiguration.loadConfiguration(statsFile);
         if (enabled) {
             cleanOldStats();
+            startBatchedSave();
         }
     }
 
-    /** Record a detection event. */
-    public void recordDetection() {
-        String day = LocalDate.now().format(DAY_FMT);
-        int count = stats.getInt("detections." + day, 0);
-        stats.set("detections." + day, count + 1);
-        save();
+    /** Start a recurring task that flushes pending stats to disk. */
+    private void startBatchedSave() {
+        saveTaskId = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            flush();
+        }, SAVE_INTERVAL_TICKS, SAVE_INTERVAL_TICKS).getTaskId();
     }
 
-    /** Record a punishment event. */
+    /** Flush pending counters to the YAML config and save to disk. */
+    private void flush() {
+        int det = pendingDetections.getAndSet(0);
+        int pun = pendingPunishments.getAndSet(0);
+        if (det > 0 || pun > 0) {
+            String day = LocalDate.now().format(DAY_FMT);
+            if (det > 0) {
+                int count = stats.getInt("detections." + day, 0);
+                stats.set("detections." + day, count + det);
+            }
+            if (pun > 0) {
+                int count = stats.getInt("punishments." + day, 0);
+                stats.set("punishments." + day, count + pun);
+            }
+            save();
+        } else if (dirty) {
+            dirty = false;
+            save();
+        }
+    }
+
+    /** Cancel the batched save task and flush remaining data. Call on plugin disable. */
+    public void shutdown() {
+        if (saveTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(saveTaskId);
+            saveTaskId = -1;
+        }
+        flush();
+    }
+
+    /** Record a detection event (in-memory, batched to disk). */
+    public void recordDetection() {
+        pendingDetections.incrementAndGet();
+    }
+
+    /** Record a punishment event (in-memory, batched to disk). */
     public void recordPunishment() {
-        String day = LocalDate.now().format(DAY_FMT);
-        int count = stats.getInt("punishments." + day, 0);
-        stats.set("punishments." + day, count + 1);
-        save();
+        pendingPunishments.incrementAndGet();
     }
 
     /** Get today's detection count. */

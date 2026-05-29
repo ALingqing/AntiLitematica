@@ -28,14 +28,12 @@ import top.chenray.antilitematica.placeholder.AntiLitematicaExpansion;
 import top.chenray.antilitematica.state.PunishStateListener;
 import top.chenray.antilitematica.threshold.DynamicThresholdManager;
 import top.chenray.antilitematica.api.AntiLitematicaAPIImpl;
-import top.chenray.antilitematica.build.AutoBuildManager;
 import top.chenray.antilitematica.update.UpdateChecker;
 import top.chenray.antilitematica.util.AuditLogger;
 import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.util.LocaleManager;
 import top.chenray.antilitematica.util.OneBotNotifier;
 import top.chenray.antilitematica.util.StatsTracker;
-import top.chenray.antilitematica.web.DashboardServer;
 
 public final class AntiLitematicaPlugin extends JavaPlugin {
    private volatile Settings settings;
@@ -52,8 +50,6 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private GuiListener guiListener;
    private DynamicThresholdManager dynamicThresholdManager;
    private UpdateChecker updateChecker;
-   private DashboardServer dashboardServer;
-   private AutoBuildManager autoBuildManager;
    private DetectionLogger detectionLogger;
    private OneBotNotifier oneBotNotifier;
    private LocaleManager localeManager;
@@ -120,19 +116,6 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       // Auto-update checker
       this.updateChecker = new UpdateChecker(this);
       this.updateChecker.start();
-
-      // Web Dashboard
-      if (this.settings.webDashboard() != null && this.settings.webDashboard().enabled()) {
-         Settings.WebDashboard wd = this.settings.webDashboard();
-         this.dashboardServer = new DashboardServer(this, wd.port(), wd.password(), wd.locale());
-         this.dashboardServer.start();
-      }
-
-      // Auto Build Manager
-      this.autoBuildManager = new AutoBuildManager(this);
-      if (this.settings.autoBuild() != null && this.settings.autoBuild().enabled()) {
-         this.autoBuildManager.start();
-      }
 
       // ---- Detection Logger ----
       boolean logEnabled = this.getConfig().getBoolean("detection_log.enabled", false);
@@ -207,12 +190,8 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          this.auditLogger.close();
       }
 
-      if (this.autoBuildManager != null) {
-         this.autoBuildManager.stop();
-      }
-
-      if (this.dashboardServer != null) {
-         this.dashboardServer.stop();
+      if (this.statsTracker != null) {
+         this.statsTracker.shutdown();
       }
 
       this.punished.clear();
@@ -258,11 +237,6 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       } else {
          this.localeManager = new LocaleManager(this,
                this.settings.lang(), this.settings.autoLocale());
-      }
-
-      // Reschedule auto-update after config reload
-      if (this.autoBuildManager != null) {
-         this.autoBuildManager.reschedule();
       }
 
       this.punished.clear();
@@ -333,14 +307,6 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
    public UpdateChecker getUpdateChecker() {
       return this.updateChecker;
-   }
-
-   public DashboardServer getDashboardServer() {
-      return this.dashboardServer;
-   }
-
-   public AutoBuildManager getAutoBuildManager() {
-      return this.autoBuildManager;
    }
 
    public DetectionLogger getDetectionLogger() {

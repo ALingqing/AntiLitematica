@@ -12,7 +12,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-public record Settings(boolean enabled, String lang, boolean autoLocale, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, WorldWhitelist worldWhitelist, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, WebDashboard webDashboard, AutoBuild autoBuild, OneBot onebot) {
+public record Settings(boolean enabled, String lang, boolean autoLocale, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, WorldWhitelist worldWhitelist, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, OneBot onebot) {
    public static Settings from(Plugin plugin, FileConfiguration cfg) {
       boolean enabled = cfg.getBoolean("enabled", true);
 
@@ -81,15 +81,6 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
          dc.getString("proxy_username", ""),
          dc.getString("proxy_password", "")
       );
-      // ---- Web Dashboard ----
-      ConfigurationSection wd = section(cfg, "web_dashboard");
-      WebDashboard webDashboard = new WebDashboard(
-            wd.getBoolean("enabled", false),
-            wd.getInt("port", 25418),
-            wd.getString("password", "admin"),
-            wd.getString("locale", "zh_CN")
-      );
-
       // ---- World Whitelist ----
       ConfigurationSection ww = section(cfg, "world_whitelist");
       WorldWhitelist worldWhitelist = new WorldWhitelist(
@@ -147,16 +138,6 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
             mysql.getString("password", "")
       );
 
-      // ---- Auto Build / Update ----
-      ConfigurationSection ab = section(cfg, "auto_build");
-      AutoBuild autoBuild = new AutoBuild(
-            ab.getBoolean("enabled", false),
-            ab.getString("output_path", ""),
-            ab.getString("nightly_time", "03:00"),
-            ab.getBoolean("auto_reload", false),
-            ab.getString("post_build_command", "")
-      );
-
       // ---- OneBot (QQ Bot) ----
       ConfigurationSection ob = section(cfg, "onebot");
       OneBot onebot = new OneBot(
@@ -168,7 +149,7 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
 
       boolean autoLocale = cfg.getBoolean("auto_locale", true);
 
-      return new Settings(enabled, lang, autoLocale, messages, detection, antiPrinter, commandGuard, worldWhitelist, graduatedPunishment, integration, discord, whitelist, webDashboard, autoBuild, onebot);
+      return new Settings(enabled, lang, autoLocale, messages, detection, antiPrinter, commandGuard, worldWhitelist, graduatedPunishment, integration, discord, whitelist, onebot);
    }
 
    private static ConfigurationSection section(ConfigurationSection parent, String path) {
@@ -355,30 +336,6 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
       public boolean isWorldExempt(String worldName) {
          return enabled && worldName != null && worlds.contains(worldName.toLowerCase(java.util.Locale.ROOT));
       }
-   }
-
-   /**
-    * Built-in web dashboard configuration.
-    */
-   public static record WebDashboard(
-      boolean enabled,
-      int port,
-      String password,
-      String locale  // zh_CN / en_US / zh_TW
-   ) {
-   }
-
-   /**
-    * Auto update & deploy configuration.
-    * Downloads the latest release JAR from GitHub Releases.
-    */
-   public static record AutoBuild(
-      boolean enabled,
-      String outputPath,      // Server plugins folder to save the downloaded JAR to
-      String nightlyTime,     // Nightly auto-update time in "HH:mm" format, empty to disable
-      boolean autoReload,     // Whether to run plugman reload after download
-      String postBuildCommand // Custom command to run after successful download
-   ) {
    }
 
    /**

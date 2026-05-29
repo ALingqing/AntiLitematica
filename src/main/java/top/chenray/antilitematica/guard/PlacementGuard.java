@@ -2,12 +2,15 @@ package top.chenray.antilitematica.guard;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
+import java.util.HashSet;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.FluidCollisionMode;
 import org.bukkit.GameMode;
+import org.bukkit.Location;
 import org.bukkit.block.Block;
 import org.bukkit.entity.Player;
 import org.bukkit.event.Cancellable;
@@ -17,6 +20,7 @@ import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.block.BlockMultiPlaceEvent;
 import org.bukkit.event.block.BlockPlaceEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 import org.bukkit.util.RayTraceResult;
 import top.chenray.antilitematica.AntiLitematicaPlugin;
@@ -36,6 +40,18 @@ public final class PlacementGuard implements Listener {
    private final Map<UUID, Float> lastYaw = new ConcurrentHashMap<>();
    private final Map<UUID, Float> lastPitch = new ConcurrentHashMap<>();
    private final Map<UUID, Integer> noLookChangeCount = new ConcurrentHashMap<>();
+   /** Cached set of staff UUIDs with antilitematica.notify permission. */
+   private final Set<UUID> staffNotify = ConcurrentHashMap.newKeySet();
+
+   // Cached config values, refreshed on start/reload
+   private volatile int cachedMaxBlocksPerSecond = 14;
+   private volatile int cachedKickAt = 8;
+   private volatile boolean apEnabled;
+   private volatile boolean applyToCreative;
+   private volatile boolean enforceRaytrace;
+   private volatile boolean detectConsecutiveSameType;
+   private volatile boolean detectNoLookChange;
+   private volatile long consecutiveWindowMs = 3000L; // now configurable
 
    public PlacementGuard(AntiLitematicaPlugin plugin, Settings settings) {
       this.plugin = plugin;
@@ -43,16 +59,40 @@ public final class PlacementGuard implements Listener {
    }
 
    public void start() {
-      if (this.settings.antiPrinter().enabled()) {
+      refreshConfigCache();
+      if (this.apEnabled) {
          Bukkit.getPluginManager().registerEvents(this, this.plugin);
+         // Pre-populate staff notify cache
+         for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online.hasPermission("antilitematica.notify")) {
+               staffNotify.add(online.getUniqueId());
+            }
+         }
       }
+   }
 
+   /** Reload cached config values to avoid repeated getter chain calls at runtime. */
+   public void refreshConfigCache() {
+      Settings.AntiPrinter ap = this.settings.antiPrinter();
+      this.apEnabled = ap.enabled();
+      this.applyToCreative = ap.applyToCreative();
+      this.enforceRaytrace = ap.enforceRaytrace();
+      this.detectConsecutiveSameType = ap.detectConsecutiveSameType();
+      this.detectNoLookChange = ap.detectNoLookChange();
+      this.cachedMaxBlocksPerSecond = Math.max(1, plugin.getDynamicThresholdManager().adjustInt(ap.maxBlocksPerSecond()));
+      this.cachedKickAt = plugin.getDynamicThresholdManager().adjustInt(ap.violations().kickAt());
+      this.consecutiveWindowMs = Math.max(1000L, this.settings.antiPrinter().violations().windowMs() / 2); // use half the violation window
    }
 
    public void shutdown() {
       HandlerList.unregisterAll(this);
       this.buckets.clear();
       this.violations.clear();
+      this.recentPlacements.clear();
+      this.lastYaw.clear();
+      this.lastPitch.clear();
+      this.noLookChangeCount.clear();
+      this.staffNotify.clear();
    }
 
    @EventHandler(
@@ -60,27 +100,26 @@ public final class PlacementGuard implements Listener {
       ignoreCancelled = true
    )
    public void onPlace(BlockPlaceEvent event) {
-      if (event instanceof BlockMultiPlaceEvent) {
+      if (event instanceof BlockMultiPlaceEvent) return;
+      if (!apEnabled) return;
+      Player p = event.getPlayer();
+      if (shouldBypass(p)) return;
+      if (!applyToCreative && p.getGameMode() == GameMode.CREATIVE) return;
+
+      if (cachedMaxBlocksPerSecond > 0 && !this.consume(p.getUniqueId(), 1)) {
+         this.deny(event, p, "rate");
          return;
       }
-      Player p = event.getPlayer();
-      if (!shouldBypass(p) && (this.settings.antiPrinter().applyToCreative() || p.getGameMode() != GameMode.CREATIVE)) {
-         if (this.settings.antiPrinter().maxBlocksPerSecond() > 0 && !this.consume(p.getUniqueId(), 1)) {
-            this.deny(event, p, "rate");
-            return;
-         }
-         if (this.settings.antiPrinter().enforceRaytrace() && !this.rayTraceMatches(p, event.getBlockPlaced(), event.getBlockAgainst())) {
-            this.deny(event, p, "raytrace");
-            return;
-         }
-         if (this.settings.antiPrinter().detectConsecutiveSameType() && this.checkConsecutiveSameType(p, event.getBlockPlaced())) {
-            this.deny(event, p, "consecutive_same");
-            return;
-         }
-         if (this.settings.antiPrinter().detectNoLookChange() && this.checkNoLookChange(p)) {
-            this.deny(event, p, "no_look_change");
-            return;
-         }
+      if (this.enforceRaytrace && !this.rayTraceMatches(p, event.getBlockPlaced(), event.getBlockAgainst())) {
+         this.deny(event, p, "raytrace");
+         return;
+      }
+      if (this.detectConsecutiveSameType && this.checkConsecutiveSameType(p, event.getBlockPlaced())) {
+         this.deny(event, p, "consecutive_same");
+         return;
+      }
+      if (this.detectNoLookChange && this.checkNoLookChange(p)) {
+         this.deny(event, p, "no_look_change");
       }
    }
 
@@ -89,25 +128,34 @@ public final class PlacementGuard implements Listener {
       ignoreCancelled = true
    )
    public void onMultiPlace(BlockMultiPlaceEvent event) {
+      if (!apEnabled) return;
       Player p = event.getPlayer();
-      if (!shouldBypass(p) && (this.settings.antiPrinter().applyToCreative() || p.getGameMode() != GameMode.CREATIVE)) {
-         int count = Math.max(1, event.getReplacedBlockStates().size());
-         if (this.settings.antiPrinter().maxBlocksPerSecond() > 0 && !this.consume(p.getUniqueId(), count)) {
-            this.deny(event, p, "rate");
-            return;
-         }
-         if (this.settings.antiPrinter().enforceRaytrace() && !this.rayTraceMatches(p, event.getBlockPlaced(), event.getBlockAgainst())) {
-            this.deny(event, p, "raytrace");
-            return;
-         }
-         if (this.settings.antiPrinter().detectConsecutiveSameType() && this.checkConsecutiveSameType(p, event.getBlockPlaced())) {
-            this.deny(event, p, "consecutive_same");
-            return;
-         }
-         if (this.settings.antiPrinter().detectNoLookChange() && this.checkNoLookChange(p)) {
-            this.deny(event, p, "no_look_change");
-            return;
-         }
+      if (shouldBypass(p)) return;
+      if (!applyToCreative && p.getGameMode() == GameMode.CREATIVE) return;
+
+      int count = Math.max(1, event.getReplacedBlockStates().size());
+      if (cachedMaxBlocksPerSecond > 0 && !this.consume(p.getUniqueId(), count)) {
+         this.deny(event, p, "rate");
+         return;
+      }
+      if (this.enforceRaytrace && !this.rayTraceMatches(p, event.getBlockPlaced(), event.getBlockAgainst())) {
+         this.deny(event, p, "raytrace");
+         return;
+      }
+      if (this.detectConsecutiveSameType && this.checkConsecutiveSameType(p, event.getBlockPlaced())) {
+         this.deny(event, p, "consecutive_same");
+         return;
+      }
+      if (this.detectNoLookChange && this.checkNoLookChange(p)) {
+         this.deny(event, p, "no_look_change");
+      }
+   }
+
+   @EventHandler
+   public void onJoin(PlayerJoinEvent event) {
+      Player p = event.getPlayer();
+      if (p.hasPermission("antilitematica.notify")) {
+         staffNotify.add(p.getUniqueId());
       }
    }
 
@@ -120,13 +168,13 @@ public final class PlacementGuard implements Listener {
       this.lastYaw.remove(id);
       this.lastPitch.remove(id);
       this.noLookChangeCount.remove(id);
+      this.staffNotify.remove(id);
    }
 
    private boolean consume(UUID playerId, int blocks) {
-      TokenBucket bucket = (TokenBucket)this.buckets.computeIfAbsent(playerId, (ignored) -> {
-         int rate = Math.max(1, this.effectiveMaxBlocksPerSecond());
-         return TokenBucket.perSecond((double)rate, (double)Math.max((long)rate * 2L, 10L));
-      });
+      TokenBucket bucket = this.buckets.computeIfAbsent(playerId, ignored ->
+         TokenBucket.perSecond(cachedMaxBlocksPerSecond, Math.max(cachedMaxBlocksPerSecond * 2L, 10L))
+      );
       return bucket.tryConsume(blocks);
    }
 
@@ -137,31 +185,32 @@ public final class PlacementGuard implements Listener {
          return;
       }
       event.setCancelled(true);
-      ViolationWindow vw = (ViolationWindow)this.violations.computeIfAbsent(p.getUniqueId(), (ignored) -> new ViolationWindow(this.settings.antiPrinter().violations().windowMs()));
+      ViolationWindow vw = this.violations.computeIfAbsent(p.getUniqueId(),
+            ignored -> new ViolationWindow(this.settings.antiPrinter().violations().windowMs()));
       int n = vw.addViolation();
+
       if (this.settings.integration().enabled()) {
          Settings.Integration integ = this.settings.integration();
-         this.plugin.getIntegrationManager().flag(p, integ.checkPrefix() + ":printer_" + type, integ.violationLevel(), "printer detection: " + type);
+         this.plugin.getIntegrationManager().flag(p, integ.checkPrefix() + ":printer_" + type,
+               integ.violationLevel(), "printer detection: " + type);
       }
 
       if (n == 1 || n % 3 == 0) {
-         String var10001 = Msg.prefix(this.settings);
-         p.sendMessage(Msg.color(var10001 + this.settings.messages().blockedPlace()));
+         p.sendMessage(Msg.color(Msg.prefix(this.settings) + this.settings.messages().blockedPlace()));
       }
 
       // ---- Fire DetectionEvent ----
       DetectionEvent detectionEvent = new DetectionEvent(p, "printer", type, DetectionEvent.DetectionType.PRINTER);
       Bukkit.getPluginManager().callEvent(detectionEvent);
 
-      if (n >= this.effectiveKickAtPrinter()) {
+      if (n >= cachedKickAt) {
          if (p.isOnline() && !detectionEvent.isCancelled()) {
             this.plugin.getLogger().info("Kicking " + p.getName() + " due to repeated blocked placements (" + type + "), violations=" + n);
+            final String kickMsgStr = Msg.color(Msg.prefix(this.settings) + this.settings.messages().kick());
             Bukkit.getScheduler().runTask(this.plugin, () -> {
                if (p.isOnline() && !shouldBypass(p)) {
-                  String var10001 = Msg.prefix(this.settings);
-                  p.kickPlayer(Msg.color(var10001 + this.settings.messages().kick()));
+                  p.kickPlayer(kickMsgStr);
                }
-
             });
             // ---- Fire PunishmentEvent ----
             Bukkit.getScheduler().runTask(this.plugin, () -> {
@@ -175,34 +224,28 @@ public final class PlacementGuard implements Listener {
       } else {
          this.notifyStaff(p, type, n);
       }
-
    }
 
    private void notifyStaff(Player p, String type, int violations) {
-      String var10000 = Msg.prefix(this.settings);
-      String msg = Msg.color(var10000 + "&e" + p.getName() + " &7blocked placement (&f" + type + "&7), vio=&f" + violations);
-
-      for(Player online : Bukkit.getOnlinePlayers()) {
-         if (online.hasPermission("antilitematica.notify")) {
-            online.sendMessage(msg);
+      String msg = Msg.color(Msg.prefix(this.settings) + "&e" + p.getName()
+            + " &7blocked placement (&f" + type + "&7), vio=&f" + violations);
+      for (UUID uid : staffNotify) {
+         Player staff = Bukkit.getPlayer(uid);
+         if (staff != null && staff.isOnline()) {
+            staff.sendMessage(msg);
          }
       }
-
    }
 
    private boolean rayTraceMatches(Player p, Block placed, Block against) {
-      double reach = (p.getGameMode() == GameMode.CREATIVE ? this.settings.antiPrinter().reachCreative() : this.settings.antiPrinter().reachSurvival()) + this.settings.antiPrinter().extraReachAllowance();
+      double reach = (p.getGameMode() == GameMode.CREATIVE
+            ? this.settings.antiPrinter().reachCreative()
+            : this.settings.antiPrinter().reachSurvival())
+            + this.settings.antiPrinter().extraReachAllowance();
       RayTraceResult r = p.rayTraceBlocks(reach, FluidCollisionMode.NEVER);
-      if (r == null) {
-         return false;
-      } else {
-         Block hit = r.getHitBlock();
-         if (hit == null) {
-            return false;
-         } else {
-            return sameBlock(hit, against) || sameBlock(hit, placed);
-         }
-      }
+      if (r == null) return false;
+      Block hit = r.getHitBlock();
+      return hit != null && (sameBlock(hit, against) || sameBlock(hit, placed));
    }
 
    private boolean checkConsecutiveSameType(Player p, Block placed) {
@@ -211,39 +254,47 @@ public final class PlacementGuard implements Listener {
       long now = System.currentTimeMillis();
       String type = placed.getType().name();
       deque.addLast(new PlacementSnapshot(now, type));
-      // Remove entries older than 3 seconds
-      while (!deque.isEmpty() && now - deque.peekFirst().time > 3000L) {
+      // Remove entries older than configured window
+      while (!deque.isEmpty() && now - deque.peekFirst().time > consecutiveWindowMs) {
          deque.pollFirst();
       }
-      int threshold = Math.max(3, plugin.getDynamicThresholdManager().adjustInt(this.settings.antiPrinter().consecutiveSameTypeThreshold()));
-      if (deque.size() >= threshold) {
-         boolean allSame = true;
-         for (PlacementSnapshot snap : deque) {
-            if (!snap.blockType.equals(type)) {
-               allSame = false;
-               break;
-            }
-         }
-         if (allSame) {
-            deque.clear();
-            return true;
-         }
+      int threshold = Math.max(3, plugin.getDynamicThresholdManager().adjustInt(
+            this.settings.antiPrinter().consecutiveSameTypeThreshold()));
+      // Require at least some placements to avoid premature flagging
+      if (deque.size() < threshold) return false;
+
+      // Use sliding ratio: flag if the dominant type accounts for >80% of placements
+      // This is smarter than requiring ALL to be same type (human builders mix blocks)
+      int sameCount = 0;
+      for (PlacementSnapshot snap : deque) {
+         if (snap.blockType.equals(type)) sameCount++;
+      }
+      double ratio = (double) sameCount / deque.size();
+      if (ratio >= 0.8) {
+         deque.clear();
+         return true;
       }
       return false;
    }
 
    private boolean checkNoLookChange(Player p) {
       UUID id = p.getUniqueId();
-      Float lastY = this.lastYaw.put(id, p.getLocation().getYaw());
-      Float lastP = this.lastPitch.put(id, p.getLocation().getPitch());
+      Location loc = p.getLocation();
+      float yaw = loc.getYaw();
+      float pitch = loc.getPitch();
+      Float lastY = this.lastYaw.put(id, yaw);
+      Float lastP = this.lastPitch.put(id, pitch);
       if (lastY != null && lastP != null) {
-         float yawDiff = Math.abs(p.getLocation().getYaw() - lastY);
-         float pitchDiff = Math.abs(p.getLocation().getPitch() - lastP);
+         float yawDiff = Math.abs(yaw - lastY);
+         float pitchDiff = Math.abs(pitch - lastP);
          // Normalize yaw diff to 0..180
          if (yawDiff > 180.0f) yawDiff = 360.0f - yawDiff;
-         if (yawDiff < 0.05f && pitchDiff < 0.05f) {
+         // Use different tolerances: yaw is stricter (0.05), pitch allows a bit more (0.1)
+         // because vertical mouse movement is more common during building
+         if (yawDiff < 0.05f && pitchDiff < 0.1f) {
             int count = this.noLookChangeCount.merge(id, 1, Integer::sum);
-            if (count >= Math.max(2, plugin.getDynamicThresholdManager().adjustInt(this.settings.antiPrinter().noLookChangeThreshold()))) {
+            if (count >= Math.max(2, plugin.getDynamicThresholdManager().adjustInt(
+                  this.settings.antiPrinter().noLookChangeThreshold()))) {
                this.noLookChangeCount.put(id, 0);
                return true;
             }
@@ -264,14 +315,6 @@ public final class PlacementGuard implements Listener {
       } else {
          return false;
       }
-   }
-
-   private int effectiveMaxBlocksPerSecond() {
-      return plugin.getDynamicThresholdManager().adjustInt(this.settings.antiPrinter().maxBlocksPerSecond());
-   }
-
-   private int effectiveKickAtPrinter() {
-      return plugin.getDynamicThresholdManager().adjustInt(this.settings.antiPrinter().violations().kickAt());
    }
 
    private static boolean shouldBypass(Player p) {

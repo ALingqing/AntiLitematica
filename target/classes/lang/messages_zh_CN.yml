@@ -1,0 +1,102 @@
+# AntiLitematica 消息配置 - 简体中文
+# 文件: messages_zh_CN.yml
+
+prefix: "&7[&cAntiLitematica&7] "
+kick: "&c你不允许在此服务器使用 Litematica / Printer（或其网络指纹）。"
+blocked_place: "&c请对准方块后再放置（禁止使用投影/打印机放置）。"
+reload: "&aAntiLitematica 配置已重载。"
+
+# GUI 消息
+gui:
+  empty: "&7点我也没用"
+  back: "&c返回上级菜单"
+  save: "&a&l保存并重载配置"
+  current: "&7当前: &f"
+  click_edit: "&e点击编辑"
+  click_toggle: "&e点击切换"
+
+  main:
+    title: "&8AntiLitematica &7配置"
+    detection: "&a检测设置"
+    punishment: "&c惩罚设置"
+    integration: "&6反作弊集成"
+    webhook: "&bWebhook设置"
+    printer: "&e反打印机"
+    messages: "&d消息设置"
+    data: "&7数据管理"
+
+  detection:
+    title: "&8检测设置"
+    servux: "&eServux元数据检测"
+    easyplace: "&eEasyPlace检测"
+    nbt: "&eNBT查询检测"
+    channels: "&e检测频道列表"
+
+  punishment:
+    title: "&8惩罚设置"
+    action: "&c惩罚动作"
+    reason: "&c封禁原因"
+    window: "&c时间窗口"
+    levels: "&c阶梯惩罚详情"
+
+  integration:
+    title: "&8反作弊集成"
+    grim: "&aGrimAC"
+    vulcan: "&aVulcan"
+    matrix: "&aMatrix"
+    vl: "&e违规等级"
+
+  webhook:
+    title: "&8Webhook设置"
+    toggle: "&b开关"
+    url: "&b设置URL"
+    trigger: "&b触发条件"
+    test: "&b测试发送"
+
+  printer:
+    title: "&8反打印机设置"
+    toggle: "&e开关"
+    creative: "&e创造模式检测"
+    raytrace: "&e射线检测"
+    rate: "&e放置速率"
+    reach: "&e检测距离"
+
+  messages:
+    title: "&8消息设置"
+    prefix: "&d前缀"
+    kick: "&d踢出消息"
+    blocked: "&d阻止放置消息"
+
+  data:
+    title: "&8数据管理"
+    reset: "&7重置玩家记录"
+    history: "&7查看玩家历史"
+    clear: "&4清空过期数据"
+
+# 输入提示
+input:
+  webhook_url: "&e请在聊天栏输入 Discord Webhook URL\n&7输入 &ccancel &7取消"
+  ban_reason: "&e请在聊天栏输入封禁原因\n&7输入 &ccancel &7取消"
+  channel_list: "&e请在聊天栏输入频道列表，用逗号分隔\n&7输入 &ccancel &7取消"
+  player_name: "&e请在聊天栏输入玩家名\n&7输入 &ccancel &7取消"
+  cancel: "&c已取消"
+  success: "&a保存成功！"
+  invalid_url: "&c无效的URL格式！"
+  timeout: "&c输入超时，已取消"
+
+# 状态显示
+status:
+  enabled: "&a开启"
+  disabled: "&c关闭"
+
+# 自动更新消息
+auto_update:
+  not_configured: "&c自动更新未配置，请在 config.yml 中设置 output_path"
+  checking: "&e正在检查 GitHub 更新..."
+  up_to_date: "&a已是最新版本 (v{current})"
+  new_version: "&e发现新版本: v{version}（当前: v{current}），开始下载..."
+  downloading: "&e正在下载 v{version}..."
+  success: "&a成功下载 v{version}！"
+  apply_hint: "&7运行 &e/plugman reload AntiLitematica &7或重启服务器以生效"
+  failed: "&c下载失败，请查看控制台日志"
+  nightly_scheduled: "&a夜间自动更新已设置于 {time}"

@@ -101,19 +101,6 @@ graduated_punishment:
 
 ## Upgrading
 
-### Automatic (Built-in)
-
-If configured, the plugin can auto-download new releases from GitHub:
-
-```yaml
-auto_build:
-  enabled: true
-  output_path: "/path/to/server/plugins"
-  nightly_time: "03:00"
-```
-
-Or run manually: `/al build`
-
 ### Manual
 
 1. Download the new JAR from [Releases](https://github.com/ALingqing/AntiLitematica/releases)

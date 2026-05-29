@@ -5,26 +5,23 @@ import java.io.FileWriter;
 import java.io.IOException;
 import java.io.PrintWriter;
 import java.text.SimpleDateFormat;
+import java.util.ArrayList;
 import java.util.Date;
+import java.util.List;
 import java.util.logging.Level;
 
+import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
 /**
  * Writes detection events to a dedicated log file (detections.log)
- * with automatic daily rotation.
- * <p>
- * Configurable via config.yml:
- * <pre>
- * detection_log:
- *   enabled: true
- *   file: "detections.log"   # relative to plugin data folder
- * </pre>
+ * with automatic daily rotation and batched writes.
  */
 public final class DetectionLogger {
 
     private static final SimpleDateFormat DATE_FORMAT = new SimpleDateFormat("yyyy-MM-dd");
     private static final SimpleDateFormat TIMESTAMP_FORMAT = new SimpleDateFormat("yyyy-MM-dd HH:mm:ss");
+    private static final long FLUSH_INTERVAL_TICKS = 200L; // 10 seconds
 
     private final Plugin plugin;
     private final File logDir;
@@ -32,6 +29,8 @@ public final class DetectionLogger {
     private String currentDate;
     private PrintWriter writer;
     private boolean enabled;
+    private final List<String> pendingLines = new ArrayList<>();
+    private int flushTaskId = -1;
 
     public DetectionLogger(Plugin plugin, boolean enabled, String fileName) {
         this.plugin = plugin;
@@ -40,41 +39,53 @@ public final class DetectionLogger {
         this.enabled = enabled;
         if (enabled) {
             rotateLog();
+            startFlushTask();
         }
     }
 
-    /**
-     * Log a detection event to the log file.
-     */
-    public synchronized void log(String playerName, String uuid, String channel,
-                                  String reason, String action, String details) {
-        if (!enabled) return;
+    private void startFlushTask() {
+        flushTaskId = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
+            flush();
+        }, FLUSH_INTERVAL_TICKS, FLUSH_INTERVAL_TICKS).getTaskId();
+    }
 
+    /** Flush all pending lines to disk. */
+    private synchronized void flush() {
+        if (!enabled || writer == null || pendingLines.isEmpty()) return;
         try {
             rotateIfNeeded();
-            if (writer == null) return;
-
-            String timestamp = TIMESTAMP_FORMAT.format(new Date());
-            writer.printf("[%s] [%s] player=%s uuid=%s channel=%s reason=%s action=%s details=%s%n",
-                    timestamp, Thread.currentThread().getName(),
-                    playerName, uuid, channel, reason, action, details);
+            for (String line : pendingLines) {
+                writer.println(line);
+            }
             writer.flush();
+            pendingLines.clear();
         } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to write detection log", e);
+            plugin.getLogger().log(Level.WARNING, "Failed to flush detection log", e);
         }
     }
 
     /**
-     * Log a simple message to the detection log.
+     * Log a detection event to the log file (batched write).
      */
-    public synchronized void log(String message) {
-        if (!enabled || writer == null) return;
-        try {
-            String timestamp = TIMESTAMP_FORMAT.format(new Date());
-            writer.printf("[%s] %s%n", timestamp, message);
-            writer.flush();
-        } catch (Exception e) {
-            plugin.getLogger().log(Level.WARNING, "Failed to write detection log", e);
+    public void log(String playerName, String uuid, String channel,
+                                  String reason, String action, String details) {
+        if (!enabled) return;
+        String timestamp = TIMESTAMP_FORMAT.format(new Date());
+        String line = String.format("[%s] player=%s uuid=%s channel=%s reason=%s action=%s details=%s",
+                timestamp, playerName, uuid, channel, reason, action, details);
+        synchronized (this) {
+            pendingLines.add(line);
+        }
+    }
+
+    /**
+     * Log a simple message (batched write).
+     */
+    public void log(String message) {
+        if (!enabled) return;
+        String timestamp = TIMESTAMP_FORMAT.format(new Date());
+        synchronized (this) {
+            pendingLines.add("[" + timestamp + "] " + message);
         }
     }
 
@@ -93,35 +104,35 @@ public final class DetectionLogger {
                 logDir.mkdirs();
             }
             File logFile = new File(logDir, fileName);
-            // If file from today exists, append; otherwise create new
             boolean append = logFile.exists();
             writer = new PrintWriter(new FileWriter(logFile, true), true);
             if (!append) {
                 writer.println("# AntiLitematica Detection Log - " + currentDate);
-                writer.println("# Format: [timestamp] [thread] player=... uuid=... channel=...");
                 writer.println("# ============================================================");
+                writer.flush();
             }
         } catch (IOException e) {
             plugin.getLogger().log(Level.WARNING, "Failed to create detection log file", e);
         }
     }
 
-    /**
-     * Set enabled state at runtime.
-     */
     public void setEnabled(boolean enabled) {
         this.enabled = enabled;
         if (enabled && writer == null) {
             rotateLog();
+            startFlushTask();
         } else if (!enabled) {
             close();
         }
     }
 
-    /**
-     * Close the log file writer.
-     */
-    public synchronized void close() {
+    /** Flush remaining lines and cancel flush task. Call on plugin disable. */
+    public void close() {
+        if (flushTaskId != -1) {
+            Bukkit.getScheduler().cancelTask(flushTaskId);
+            flushTaskId = -1;
+        }
+        flush();
         if (writer != null) {
             writer.close();
             writer = null;

@@ -2,6 +2,7 @@ package top.chenray.antilitematica.guard;
 
 import java.util.Locale;
 import java.util.Map;
+import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
@@ -13,6 +14,7 @@ import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
+import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import top.chenray.antilitematica.AntiLitematicaPlugin;
@@ -30,6 +32,8 @@ public final class CommandGuard implements Listener {
    private final Map<UUID, Long> lastCommandMs = new ConcurrentHashMap<>();
    private final Map<UUID, Integer> commandBurst = new ConcurrentHashMap<>();
    private final Map<UUID, ViolationWindow> violations = new ConcurrentHashMap<>();
+   /** Cached staff notify set (avoids iterating all online players). */
+   private final Set<UUID> staffNotify = ConcurrentHashMap.newKeySet();
 
    public CommandGuard(AntiLitematicaPlugin plugin, Settings settings) {
       this.plugin = plugin;
@@ -39,6 +43,12 @@ public final class CommandGuard implements Listener {
    public void start() {
       if (this.settings.commandGuard().enabled()) {
          Bukkit.getPluginManager().registerEvents(this, this.plugin);
+         // Pre-populate staff notify cache
+         for (Player online : Bukkit.getOnlinePlayers()) {
+            if (online.hasPermission("antilitematica.notify")) {
+               staffNotify.add(online.getUniqueId());
+            }
+         }
       }
    }
 
@@ -47,6 +57,7 @@ public final class CommandGuard implements Listener {
       this.lastCommandMs.clear();
       this.commandBurst.clear();
       this.violations.clear();
+      this.staffNotify.clear();
    }
 
    @EventHandler(
@@ -55,9 +66,7 @@ public final class CommandGuard implements Listener {
    )
    public void onCommand(PlayerCommandPreprocessEvent event) {
       Player p = event.getPlayer();
-      if (shouldBypass(p)) {
-         return;
-      }
+      if (shouldBypass(p)) return;
       // Check world whitelist
       if (this.settings.worldWhitelist() != null
             && this.settings.worldWhitelist().isWorldExempt(p.getWorld().getName())) {
@@ -65,7 +74,6 @@ public final class CommandGuard implements Listener {
       }
 
       Settings.CommandGuard cg = this.settings.commandGuard();
-      int effectiveMaxPerWindow = plugin.getDynamicThresholdManager().adjustInt(cg.maxPerWindow());
       String cmd = event.getMessage();
       String cmdLower = cmd.toLowerCase(Locale.ROOT);
 
@@ -76,7 +84,7 @@ public final class CommandGuard implements Listener {
          }
       }
 
-      // Check blocked commands (Litematica quick-paste often uses /setblock)
+      // Check if this command matches a blocked pattern
       boolean blocked = false;
       for (String blockedCmd : cg.blockedCommands()) {
          if (cmdLower.startsWith(blockedCmd.toLowerCase(Locale.ROOT))) {
@@ -85,7 +93,9 @@ public final class CommandGuard implements Listener {
          }
       }
 
-      // Burst detection: rapid commands in short window
+      // Only track burst for commands that either match blocked patterns
+      // or are treated as suspicious (all commands except allowed ones)
+      int effectiveMaxPerWindow = plugin.getDynamicThresholdManager().adjustInt(cg.maxPerWindow());
       UUID id = p.getUniqueId();
       long now = System.currentTimeMillis();
       Long last = this.lastCommandMs.put(id, now);
@@ -105,11 +115,20 @@ public final class CommandGuard implements Listener {
    }
 
    @EventHandler
+   public void onJoin(PlayerJoinEvent event) {
+      Player p = event.getPlayer();
+      if (p.hasPermission("antilitematica.notify")) {
+         staffNotify.add(p.getUniqueId());
+      }
+   }
+
+   @EventHandler
    public void onQuit(PlayerQuitEvent event) {
       UUID id = event.getPlayer().getUniqueId();
       this.lastCommandMs.remove(id);
       this.commandBurst.remove(id);
       this.violations.remove(id);
+      this.staffNotify.remove(id);
    }
 
    private void deny(PlayerCommandPreprocessEvent event, Player p, String type, int burstCount) {
@@ -147,9 +166,10 @@ public final class CommandGuard implements Listener {
    private void notifyStaff(Player p, String type, int violations) {
       String prefix = Msg.prefix(this.settings);
       String msg = Msg.color(prefix + "&e" + p.getName() + " &7blocked command (&f" + type + "&7), vio=&f" + violations);
-      for (Player online : Bukkit.getOnlinePlayers()) {
-         if (online.hasPermission("antilitematica.notify")) {
-            online.sendMessage(msg);
+      for (UUID uid : staffNotify) {
+         Player staff = Bukkit.getPlayer(uid);
+         if (staff != null && staff.isOnline()) {
+            staff.sendMessage(msg);
          }
       }
    }

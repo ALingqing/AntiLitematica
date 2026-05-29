@@ -48,15 +48,10 @@ public final class ConfigMigrator {
         logger.info("Migrating config.yml from version " + oldVersion + " to " + CURRENT_VERSION + "...");
         boolean changed = false;
 
-        // v1 → v2: add detection_log, auto_build, mysql, etc.
+        // v1 → v2: add detection_log, mysql, etc.
         if (oldVersion < 1) {
             changed |= addDefault(cfg, "detection_log.enabled", false);
             changed |= addDefault(cfg, "detection_log.file", "detections.log");
-            changed |= addDefault(cfg, "auto_build.enabled", false);
-            changed |= addDefault(cfg, "auto_build.output_path", "");
-            changed |= addDefault(cfg, "auto_build.nightly_time", "03:00");
-            changed |= addDefault(cfg, "auto_build.auto_reload", false);
-            changed |= addDefault(cfg, "auto_build.post_build_command", "");
         }
 
         if (oldVersion < 2) {
@@ -76,12 +71,6 @@ public final class ConfigMigrator {
             changed |= addDefault(cfg, "stats.enabled", true);
             changed |= addDefault(cfg, "stats.record_retention_days", 30);
             changed |= addDefault(cfg, "stats.stats_retention_days", 90);
-            // Re-add auto_build defaults if missing (was added in v1)
-            changed |= addDefault(cfg, "auto_build.enabled", false);
-            changed |= addDefault(cfg, "auto_build.output_path", "");
-            changed |= addDefault(cfg, "auto_build.nightly_time", "03:00");
-            changed |= addDefault(cfg, "auto_build.auto_reload", false);
-            changed |= addDefault(cfg, "auto_build.post_build_command", "");
         }
 
         // Set current version

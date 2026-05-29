@@ -66,8 +66,6 @@ public final class AntiLitematicaCommand implements CommandExecutor {
             return handleHistory(sender, args[1], page);
          case "update":
             return handleUpdate(sender);
-         case "build":
-            return handleBuild(sender);
          case "export":
             return handleExport(sender, args);
          case "import":
@@ -188,35 +186,6 @@ public final class AntiLitematicaCommand implements CommandExecutor {
          // Force re-check
          this.plugin.getUpdateChecker().checkAsync();
       }
-      return true;
-   }
-
-   private boolean handleBuild(CommandSender sender) {
-      if (this.plugin.getAutoBuildManager() == null) {
-         sender.sendMessage(ChatColor.RED + "Auto-update manager not available.");
-         return true;
-      }
-      sender.sendMessage(ChatColor.GRAY + "Checking for updates on GitHub...");
-      this.plugin.getAutoBuildManager().checkUpdateAsync().thenAccept(version -> {
-         if (version == null) {
-            sender.sendMessage(ChatColor.RED + "Failed to check for updates. See console for details.");
-            return;
-         }
-         String current = this.plugin.getDescription().getVersion();
-         if (version.equals(current)) {
-            sender.sendMessage(ChatColor.GREEN + "Already at the latest version (v" + current + ").");
-            return;
-         }
-         sender.sendMessage(ChatColor.GRAY + "New version found: v" + version + " (current: v" + current + "). Downloading...");
-         this.plugin.getAutoBuildManager().downloadLatestAsync().thenAccept(success -> {
-            if (success) {
-               sender.sendMessage(ChatColor.GREEN + "Downloaded v" + version + " successfully!");
-               sender.sendMessage(ChatColor.GRAY + "Run &e/plugman reload AntiLitematica&7 or restart server to apply.");
-            } else {
-               sender.sendMessage(ChatColor.RED + "Download failed. Check server console for details.");
-            }
-         });
-      });
       return true;
    }
 

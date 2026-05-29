@@ -16,8 +16,10 @@ import java.util.ArrayList;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
+import java.util.concurrent.ConcurrentHashMap;
 import org.bukkit.Bukkit;
 import org.bukkit.entity.Player;
 import org.bukkit.util.Vector;
@@ -38,6 +40,30 @@ public final class ProtocolLibBridge {
    private ProtocolManager protocolManager;
    private PacketAdapter customPayloadListener;
 
+   // Cached signal config, avoids getter chain at runtime
+   private volatile boolean svEnabled;
+   private volatile boolean epEnabled;
+   private volatile double epRelMin;
+   private volatile double epRelMax;
+   private volatile boolean epCancel;
+   private volatile boolean nbtEnabled;
+   private volatile boolean nbtAllowOp;
+   private volatile boolean nbtCancel;
+   private volatile boolean blockServux;
+   private volatile java.util.Set<String> detectionChannels;
+
+   // Consecutive EasyPlace tracking: require multiple hits to reduce false positives
+   private final Map<UUID, EasyPlaceCounter> epTracking = new ConcurrentHashMap<>();
+   private static final long EP_WINDOW_MS = 10000L; // 10 second window
+   private static final int EP_MIN_CONSECUTIVE = 3; // require 3+ EasyPlace hits
+
+   // Known Litematica channels for registration monitoring (same as ModChannelDetector)
+   private static final java.util.Set<String> KNOWN_LITEMATICA_CHANNELS = java.util.Set.of(
+         "servux:litematics", "servux:litematica",
+         "litematica:hello", "litematica:place",
+         "schematica", "minecraft:schematica"
+   );
+
    public ProtocolLibBridge(AntiLitematicaPlugin plugin, Settings settings) {
       this.plugin = plugin;
       this.settings = settings;
@@ -49,46 +75,64 @@ public final class ProtocolLibBridge {
          return;
       }
       this.protocolManager = ProtocolLibrary.getProtocolManager();
+
+      // Cache all signal configs at start time
+      Settings.Signals signals = this.settings.detection().signals();
+      Settings.EasyPlaceSignal ep = (signals != null) ? signals.easyPlace() : null;
+      Settings.NbtQuerySignal nbt = (signals != null) ? signals.nbtQuery() : null;
+      Settings.ServuxMetadataSignal sv = (signals != null) ? signals.servuxMetadata() : null;
+      this.svEnabled = sv != null && sv.enabled();
+      this.epEnabled = ep != null && ep.enabled();
+      this.epRelMin = ep != null ? ep.relMin() : -0.5;
+      this.epRelMax = ep != null ? ep.relMax() : 1.5;
+      this.epCancel = ep != null && ep.cancelPacket();
+      this.nbtEnabled = nbt != null && nbt.enabled();
+      this.nbtAllowOp = nbt == null || nbt.allowOp();
+      this.nbtCancel = nbt == null || nbt.cancelPacket();
+      this.blockServux = this.settings.detection().blockServux();
+      this.detectionChannels = this.settings.detection().channels();
+
       List<PacketType> types = new ArrayList<>();
       types.add(Client.CUSTOM_PAYLOAD);
-      Settings.Signals signals = this.settings.detection().signals();
-      if (signals != null) {
-         if (signals.easyPlace() != null && signals.easyPlace().enabled()) {
-            types.add(Client.USE_ITEM_ON);
-         }
-         if (signals.nbtQuery() != null && signals.nbtQuery().enabled()) {
-            types.add(Client.TILE_NBT_QUERY);
-            types.add(Client.ENTITY_NBT_QUERY);
-         }
+      if (epEnabled) types.add(Client.USE_ITEM_ON);
+      if (nbtEnabled) {
+         types.add(Client.TILE_NBT_QUERY);
+         types.add(Client.ENTITY_NBT_QUERY);
       }
+
+      final boolean detectionEnabled = this.settings.detection().enabled();
+      final boolean globalEnabled = this.settings.enabled();
 
       this.customPayloadListener = new PacketAdapter(this.plugin, ListenerPriority.HIGHEST, types) {
          public void onPacketReceiving(PacketEvent event) {
-            if (ProtocolLibBridge.this.settings.enabled() && ProtocolLibBridge.this.settings.detection().enabled()) {
-               Player player = event.getPlayer();
-               if (player != null && !player.hasPermission("antilitematica.bypass")) {
-                  PacketContainer packet = event.getPacket();
-                  if (packet.getType() == Client.CUSTOM_PAYLOAD) {
-                     ProtocolLibBridge.this.handleCustomPayload(event, player, packet);
-                  } else {
-                     Settings.Signals sig = ProtocolLibBridge.this.settings.detection().signals();
-                     if (packet.getType() == Client.USE_ITEM_ON && sig != null && sig.easyPlace() != null && sig.easyPlace().enabled()) {
-                        if (ProtocolLibBridge.detectEasyPlaceUseItemOn(packet, sig.easyPlace().relMin(), sig.easyPlace().relMax())) {
-                           if (sig.easyPlace().cancelPacket()) {
-                              event.setCancelled(true);
-                           }
-                           ProtocolLibBridge.this.punishOnce(player, "litematica:easy_place", "use_item_on (abnormal hit vec)");
-                        }
-                     } else if ((packet.getType() == Client.TILE_NBT_QUERY || packet.getType() == Client.ENTITY_NBT_QUERY) && sig != null && sig.nbtQuery() != null && sig.nbtQuery().enabled()) {
-                        boolean allow = sig.nbtQuery().allowOp() && player.isOp();
-                        if (!allow) {
-                           if (sig.nbtQuery().cancelPacket()) {
-                              event.setCancelled(true);
-                           }
-                           ProtocolLibBridge.this.punishOnce(player, "minecraft:tag_query", "debug nbt query (" + packet.getType().name() + ")");
-                        }
-                     }
+            if (!globalEnabled || !detectionEnabled) return;
+            Player player = event.getPlayer();
+            if (player == null || player.hasPermission("antilitematica.bypass")) return;
+
+            PacketContainer packet = event.getPacket();
+            if (packet.getType() == Client.CUSTOM_PAYLOAD) {
+               ProtocolLibBridge.this.handleCustomPayload(event, player, packet);
+            } else if (packet.getType() == Client.USE_ITEM_ON && ProtocolLibBridge.this.epEnabled) {
+               if (ProtocolLibBridge.detectEasyPlaceUseItemOn(packet,
+                     ProtocolLibBridge.this.epRelMin, ProtocolLibBridge.this.epRelMax)) {
+                  // Track consecutive EasyPlace hits — require multiple to reduce false positives
+                  if (ProtocolLibBridge.this.trackEasyPlaceHit(player.getUniqueId())) {
+                     if (ProtocolLibBridge.this.epCancel) event.setCancelled(true);
+                     ProtocolLibBridge.this.punishOnce(player, "litematica:easy_place", "use_item_on (abnormal hit vec)");
                   }
+               } else {
+                  // Reset on legitimate placement
+                  ProtocolLibBridge.this.epTracking.remove(player.getUniqueId());
+               }
+            } else if ((packet.getType() == Client.TILE_NBT_QUERY || packet.getType() == Client.ENTITY_NBT_QUERY)
+                  && ProtocolLibBridge.this.nbtEnabled) {
+               boolean allow = ProtocolLibBridge.this.nbtAllowOp && player.isOp();
+               if (!allow) {
+                  // Inspect the NBT query transaction ID — Litematica sends specific patterns
+                  String queryDetail = ProtocolLibBridge.this.inspectNbtQuery(packet, player);
+                  if (ProtocolLibBridge.this.nbtCancel) event.setCancelled(true);
+                  ProtocolLibBridge.this.punishOnce(player, "minecraft:tag_query",
+                        "debug nbt query" + queryDetail);
                }
             }
          }
@@ -103,6 +147,29 @@ public final class ProtocolLibBridge {
 
       this.protocolManager = null;
       this.customPayloadListener = null;
+      this.epTracking.clear();
+   }
+
+   /**
+    * Track consecutive EasyPlace hits within a time window.
+    * Returns true only after EP_MIN_CONSECUTIVE hits are reached.
+    * This reduces false positives from legitimate but slightly-off block interactions.
+    */
+   private boolean trackEasyPlaceHit(UUID playerId) {
+      long now = System.currentTimeMillis();
+      EasyPlaceCounter counter = epTracking.computeIfAbsent(playerId, k -> new EasyPlaceCounter());
+      if (now - counter.lastHitTime > EP_WINDOW_MS) {
+         counter.count = 0; // reset if window expired
+      }
+      counter.count++;
+      counter.lastHitTime = now;
+      return counter.count >= EP_MIN_CONSECUTIVE;
+   }
+
+   /** Simple counter for EasyPlace tracking. */
+   private static final class EasyPlaceCounter {
+      int count = 0;
+      long lastHitTime = 0;
    }
 
    private void punishOnce(Player player, String channel, String why) {
@@ -115,48 +182,97 @@ public final class ProtocolLibBridge {
 
    private void handleCustomPayload(PacketEvent event, Player player, PacketContainer packet) {
       String channel = readChannel(packet);
-      if (channel != null && !channel.isEmpty()) {
-         channel = normalize(channel);
-         if (isRegisterChannel(channel)) {
-            byte[] data = readPayloadBytes(packet);
-            if (data != null && data.length != 0) {
-               Set<String> announced = parseRegisterList(data);
-               if (!announced.isEmpty()) {
-                  for(String blocked : this.settings.detection().channels()) {
-                     if (announced.contains(normalize(blocked))) {
-                        if ("servux:litematics".equals(normalize(blocked)) && ProtocolLibBridge.this.settings.detection().blockServux()) {
-                           event.setCancelled(true);
-                        }
-                        this.punishOnce(player, blocked, "register-list via " + channel);
-                        return;
-                     }
-                  }
-               }
-            }
-         } else {
-            Settings.Signals sig = this.settings.detection().signals();
-            boolean servuxMetaEnabled = sig == null || sig.servuxMetadata() == null || sig.servuxMetadata().enabled();
-            if (servuxMetaEnabled && "servux:litematics".equals(channel)) {
-               byte[] data = readPayloadBytes(packet);
-               String version = tryExtractServuxVersionString(data);
-               if (version != null) {
-                  if (ProtocolLibBridge.this.settings.detection().blockServux()) {
-                     event.setCancelled(true);
-                  }
-                  this.punishOnce(player, channel, "payload (servux metadata version=" + version + ")");
-                  return;
-               }
-            }
+      if (channel == null || channel.isEmpty()) return;
+      channel = normalize(channel);
 
-            if (this.settings.detection().channels().contains(channel)) {
-               if ("servux:litematics".equals(channel) && ProtocolLibBridge.this.settings.detection().blockServux()) {
-                  event.setCancelled(true);
+      if (isRegisterChannel(channel)) {
+         byte[] data = readPayloadBytes(packet);
+         if (data != null && data.length != 0) {
+            Set<String> announced = parseRegisterList(data);
+            if (!announced.isEmpty()) {
+               for (String blocked : detectionChannels) {
+                  if (announced.contains(normalize(blocked))) {
+                     if ("servux:litematics".equals(normalize(blocked)) && blockServux) {
+                        event.setCancelled(true);
+                     }
+                     this.punishOnce(player, blocked, "register-list via " + channel);
+                     return;
+                  }
                }
-               this.punishOnce(player, channel, "payload");
+               // Also check against known Litematica channels not in config
+               for (String announced_ch : announced) {
+                  if (KNOWN_LITEMATICA_CHANNELS.contains(announced_ch)
+                        && !detectionChannels.contains(announced_ch)) {
+                     this.plugin.getLogger().info("[ProtocolLib] " + player.getName()
+                           + " registered known Litematica channel '" + announced_ch
+                           + "' via " + channel + " (not in config blocked list)");
+                     // Don't punish for channels not in config — but warn in log
+                  }
+               }
+            }
+         }
+         return;
+      }
+
+      // Servux metadata check
+      if (svEnabled && "servux:litematics".equals(channel)) {
+         byte[] data = readPayloadBytes(packet);
+         String version = tryExtractServuxVersionString(data);
+         if (version != null) {
+            if (blockServux) event.setCancelled(true);
+            this.punishOnce(player, channel, "servux metadata version=" + version);
+            return;
+         }
+         // Also check for servux metadata even without version string
+         if (data != null && data.length >= 2) {
+            // servux metadata packets have a distinct structure
+            MinecraftVarInt.ReadResult rr = MinecraftVarInt.read(data, 0);
+            if (rr.ok() && rr.value() <= 10) {
+               // This is a valid servux protocol message — highly likely Litematica
+               if (blockServux) event.setCancelled(true);
+               this.punishOnce(player, channel, "servux protocol packet type=" + rr.value());
+               return;
             }
          }
       }
 
+      // Direct channel match
+      if (detectionChannels.contains(channel)) {
+         if ("servux:litematics".equals(channel) && blockServux) {
+            event.setCancelled(true);
+         }
+         this.punishOnce(player, channel, "payload");
+      }
+   }
+
+   /**
+    * Inspect an NBT query packet to extract more detail about the query target.
+    * Litematica queries specific block entities — having better details aids debugging.
+    */
+   private String inspectNbtQuery(PacketContainer packet, Player player) {
+      StringBuilder detail = new StringBuilder();
+      detail.append(" (").append(packet.getType().name());
+      try {
+         // Try to read the transaction ID / position from the packet
+         if (packet.getIntegers() != null && packet.getIntegers().size() > 0) {
+            int txId = packet.getIntegers().read(0);
+            detail.append(" tx=").append(txId);
+         }
+         // TILE_NBT_QUERY has a BlockPosition
+         if (packet.getType() == Client.TILE_NBT_QUERY
+               && packet.getBlockPositionModifier() != null
+               && packet.getBlockPositionModifier().size() > 0) {
+            BlockPosition pos = packet.getBlockPositionModifier().read(0);
+            if (pos != null) {
+               detail.append(" pos=").append(pos.getX()).append(",")
+                     .append(pos.getY()).append(",").append(pos.getZ());
+            }
+         }
+      } catch (Throwable ignored) {
+         // Packet structure varies by version; silently skip on error
+      }
+      detail.append(")");
+      return detail.toString();
    }
 
    private static boolean detectEasyPlaceUseItemOn(PacketContainer packet, double relMin, double relMax) {

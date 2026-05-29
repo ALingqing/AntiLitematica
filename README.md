@@ -12,7 +12,7 @@
 
 AntiLitematica is a server-side plugin that detects and prevents the use of Litematica, Schematica, and their Printer features on your Minecraft server. No client-side mod installation required.
 
-Built with ProtocolLib deep inspection, a graduated punishment system, Geyser (Bedrock) compatibility, and a built-in web dashboard, AntiLitematica provides robust protection while minimizing false positives.
+Built with ProtocolLib deep inspection, a graduated punishment system, and Geyser (Bedrock) compatibility, AntiLitematica provides robust protection while minimizing false positives.
 
 ---
 
@@ -32,15 +32,13 @@ Built with ProtocolLib deep inspection, a graduated punishment system, Geyser (B
 - **In-Game GUI** -- Manage settings through an inventory interface with live reload
 - **PlaceholderAPI Support** -- Placeholders for external plugins
 - **Violation Whitelist** -- Trusted players: log only, no punishment
-- **Web Dashboard** -- Built-in monitoring panel (JDK HttpServer, no extra deps). SSE real-time updates, violation ranking, audit log view, Prometheus metrics endpoint
-- **Auto GitHub Download** -- Downloads latest release JAR (nightly or /al build). Auto-detects plugins folder, auto-replaces running JAR
 - **MySQL Storage** -- Violation records in MySQL/MariaDB
 - **Detection Statistics** -- Daily detection/punishment counts, hit rate tracking, configurable retention
-- **Admin Audit Log** -- All admin actions logged to audit.log, viewable in Web Dashboard
+- **Admin Audit Log** -- All admin actions logged to audit.log
 - **Config Auto-Migration** -- Old config.yml auto-updated with new defaults
 - **Multi-Language** -- Auto-detects player client language (50+ locales), falls back through chain
 - **Public API** -- AntiLitematicaAPI interface with DetectionEvent (cancellable) and PunishmentEvent
-- **Prometheus Metrics** -- /api/metrics endpoint for Prometheus/Grafana monitoring
+
 
 ---
 
@@ -61,11 +59,11 @@ Full installation guide: [wiki/INSTALL.md](wiki/INSTALL.md)
 
 ## How It Works
 
-1. Channel Detection -- Monitors plugin channel registration. servux:litematics triggers immediate action.
-2. ProtocolLib Signals -- Intercepts abnormal hit vectors (EasyPlace), NBT queries, and Servux metadata.
-3. Anti-Printer Analysis -- Every block placement analyzed for inhuman patterns: no raytrace, excessive speed, identical blocks, no camera movement.
-4. Command Guard -- Detects rapid command bursts used by schematic quick-paste. Allowlist exempts normal commands.
-5. Punishment Execution -- Warnings, kicks, temp bans, or permanent bans. Ban hooks: LiteBans, AdvancedBan, EssentialsX, Bukkit native.
+1. **Channel Detection** -- Monitors Litematica/Schematica plugin channel registration and payloads (servux:litematics, litematica:main, litematica:hello, litematica:place, etc.)
+2. **ProtocolLib Signals** -- Intercepts abnormal hit vectors (EasyPlace), NBT queries, and Servux metadata fingerprints
+3. **Anti-Printer Analysis** -- Every block placement analyzed for inhuman patterns: no raytrace, excessive speed, identical blocks, no camera movement
+4. **Command Guard** -- Detects rapid command bursts used by schematic quick-paste. Allowlist exempts normal commands
+5. **Punishment Execution** -- Warnings, kicks, temp bans, or permanent bans. Ban hooks: LiteBans, AdvancedBan, EssentialsX, Bukkit native
 
 All checks respect antilitematica.bypass and auto-exempt Geyser Bedrock players.
 
@@ -79,7 +77,6 @@ All checks respect antilitematica.bypass and auto-exempt Geyser Bedrock players.
 | `/al gui` | | Open configuration GUI |
 | `/al status` | | View plugin status |
 | `/al update` | | Check GitHub for updates |
-| `/al build` | | Download latest release JAR |
 | `/al reset <player\|all\|expired>` | | Reset violation records |
 | `/al history <player> [page]` | | View violation history |
 | `/al export` | | Export records to JSON |
@@ -109,34 +106,10 @@ Full reference: [wiki/COMMANDS.md](wiki/COMMANDS.md)
 | [Installation](wiki/INSTALL.md) | [API Reference](docs/API.md) |
 | [Configuration Reference](wiki/CONFIG.md) | [Architecture Overview](docs/ARCHITECTURE.md) |
 | [Commands & Permissions](wiki/COMMANDS.md) | [Contributing Guide](docs/CONTRIBUTING.md) |
-| [Web Dashboard Guide](wiki/WEB_DASHBOARD.md) | |
 | [FAQ](wiki/FAQ.md) | |
 | [Changelog](CHANGELOG.md) | |
 
 ---
-
-## Web Dashboard
-
-Built-in monitoring panel at `http://<your-server-ip>:25418`. No extra dependencies.
-
-```yaml
-web_dashboard:
-  enabled: true
-  port: 25418
-  password: "your_password"
-  locale: "zh_CN"
-```
-
-Features:
-- Real-time server overview with SSE (auto-refresh)
-- Player list with ping, gamemode, violation count
-- Violation records viewer with ranking (top 20)
-- Quick settings toggles (detection, printer, command guard, punishment, webhook)
-- Admin audit log viewer
-- Multi-language UI (zh_CN / en_US / zh_TW)
-- Prometheus metrics at /api/metrics
-
-Full guide: [wiki/WEB_DASHBOARD.md](wiki/WEB_DASHBOARD.md)
 
 ---
 
@@ -165,11 +138,9 @@ Full reference: [docs/API.md](docs/API.md)
 - `whitelist` -- Player exemption (LOG_ONLY / NORMAL)
 - `discord` -- Webhook URL, embed, proxy
 - `onebot` -- QQ Bot HTTP API configuration
-- `web_dashboard` -- Port, password, language
 - `dynamic_threshold` -- TPS/player-based sensitivity
 - `detection_log` -- Dedicated log file
 - `stats` -- Detection statistics and record retention
-- `auto_build` -- GitHub auto-download
 - `lang` -- Server default language
 - `bstats` -- Metrics opt-out
 
@@ -193,12 +164,13 @@ mvn clean package
 # Output: target/AntiLitematica-<version>.jar
 ```
 
-Built with Java 21 and Maven. CI via GitHub Actions.
+Built with Java 21 and Maven 3. CI via GitHub Actions.
 
 ## Compatibility
 
 - **Server:** Paper, Spigot, Purpur (1.12.2+)
-- **Java:** 8+ (21+ recommended)
+- **Paper API:** 26.1.2+ (Minecraft 1.21.11+)
+- **Java:** 21+
 - **Geyser/Floodgate:** Fully supported, Bedrock players auto-exempted
 - **Ban Plugins:** LiteBans, AdvancedBan, EssentialsX
 - **Anti-Cheat:** GrimAC, Vulcan, Matrix
