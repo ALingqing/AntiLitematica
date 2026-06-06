@@ -9,15 +9,10 @@ All commands use the base `/antilitematica` or its alias `/al`.
 | Command | Description | Permission |
 |---------|-------------|------------|
 | `/al reload` | Reload configuration from disk | antilitematica.admin |
-| `/al gui` | Open configuration GUI (in-game only) | antilitematica.admin |
 | `/al status` | View current plugin settings | antilitematica.admin |
-| `/al update` | Check for new versions on GitHub | antilitematica.admin |
 | `/al reset <player\|all\|expired>` | Reset violation records | antilitematica.admin |
 | `/al history <player> [page]` | View violation history with pagination | antilitematica.admin |
-| `/al export` | Export violation records to JSON file | antilitematica.admin |
-| `/al import` | Import violation records from JSON file | antilitematica.admin |
 | `/al testnotify` | Test Discord webhook and OneBot QQ bot | antilitematica.admin |
-| `/al kickall` | Kick all currently flagged players | antilitematica.admin |
 | `/al whitelist list` | List all whitelisted players | antilitematica.admin |
 | `/al whitelist add <player>` | Add a player to the whitelist | antilitematica.admin |
 | `/al whitelist remove <player>` | Remove a player from the whitelist | antilitematica.admin |
@@ -27,14 +22,8 @@ All commands use the base `/antilitematica` or its alias `/al`.
 #### `/al reload`
 Reloads config.yml and messages.yml without restarting. All modules re-initialized.
 
-#### `/al gui`
-Opens an interactive inventory GUI for managing settings. In-game only.
-
 #### `/al status`
 Displays current settings: enabled, detection action, storage type, signal checks, anti-printer, command guard, graduated punishment.
-
-#### `/al update`
-Checks GitHub for new releases. Shows version and download link if available.
 
 #### `/al reset`
 - `/al reset <player>` -- Reset a specific player's record
@@ -44,17 +33,8 @@ Checks GitHub for new releases. Shows version and download link if available.
 #### `/al history <player> [page]`
 Displays violation record with pagination (5 entries per page).
 
-#### `/al export`
-Exports all violation records to violations_export.json in the plugin folder.
-
-#### `/al import`
-Imports violation records from violations_export.json in the plugin folder.
-
 #### `/al testnotify`
 Tests all configured notification services (Discord webhook and OneBot QQ bot).
-
-#### `/al kickall`
-Kicks all players currently marked as punished. Respects antilitematica.bypass permission.
 
 #### `/al whitelist`
 Manage the violation whitelist. See Configuration for details.

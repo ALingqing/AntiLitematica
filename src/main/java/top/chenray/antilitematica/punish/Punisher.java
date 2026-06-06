@@ -18,6 +18,7 @@ import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.util.DiscordWebhook;
 import top.chenray.antilitematica.util.Msg;
 import top.chenray.antilitematica.util.OneBotNotifier;
+import top.chenray.antilitematica.util.SchedulerUtil;
 import top.chenray.antilitematica.util.StatsTracker;
 
 public final class Punisher {
@@ -74,6 +75,17 @@ public final class Punisher {
          case LOG:
             plugin.getLogger().info("Detected blocked channel '" + channel + "' from " + player.getName() + " via " + why);
             break;
+         case WARN:
+            actionName = "WARN";
+            // 仅发送警告消息给玩家，不执行踢出或封禁
+            plugin.getLogger().info("Warning " + player.getName() + " (blocked channel '" + channel + "' via " + why + ")");
+            String warnMsg = Msg.color(Msg.prefix(settings) + (det.reason() != null ? det.reason() : "Forbidden client mod detected."));
+            SchedulerUtil.runForPlayer(plugin, player, () -> {
+               if (player.isOnline() && !player.hasPermission("antilitematica.bypass")) {
+                  player.sendMessage(warnMsg);
+               }
+            });
+            break;
          case KICK:
             actionName = "KICK";
             punishExecuted = true;
@@ -115,19 +127,19 @@ public final class Punisher {
       }
    }
 
-   /** Schedule a kick on the main thread. */
+   /** Schedule a kick on the player's entity region thread. */
    private static void scheduleKick(AntiLitematicaPlugin plugin, Player player, String kickMsg) {
-      Bukkit.getScheduler().runTask(plugin, () -> {
+      SchedulerUtil.runForPlayer(plugin, player, () -> {
          if (player.isOnline() && !player.hasPermission("antilitematica.bypass")) {
             player.kickPlayer(kickMsg);
          }
       });
    }
 
-   /** Schedule a ban + kick on the main thread. */
+   /** Schedule a ban + kick on the player's entity region thread. */
    private static void scheduleBan(AntiLitematicaPlugin plugin, Player player,
                                     String reason, String kickMsg) {
-      Bukkit.getScheduler().runTask(plugin, () -> {
+      SchedulerUtil.runForPlayer(plugin, player, () -> {
          if (player.isOnline() && !player.hasPermission("antilitematica.bypass")) {
             Bukkit.getBanList(Type.NAME).addBan(player.getName(), reason, null, plugin.getName());
             player.kickPlayer(kickMsg);
@@ -230,7 +242,7 @@ public final class Punisher {
       if (commands != null && !commands.isEmpty()) {
          UUID uuid = player.getUniqueId();
          CommandSender console = Bukkit.getConsoleSender();
-         Bukkit.getScheduler().runTask(plugin, () -> {
+         SchedulerUtil.runGlobal(plugin, () -> {
             for(String cmd : commands) {
                if (cmd != null) {
                   String c = cmd.replace("%player%", player.getName()).replace("%uuid%", uuid.toString()).replace("%reason%", reason).replace("%channel%", channel == null ? "" : channel).replace("%why%", why == null ? "" : why);

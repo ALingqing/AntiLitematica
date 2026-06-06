@@ -307,17 +307,13 @@ detection_log:
 ```yaml
 stats:
   enabled: true
-  record_retention_days: 30
-  stats_retention_days: 90
 ```
 
-Tracks daily detection/punishment counts. Auto-cleans old records.
+Pure in-memory detection/punishment counters (no disk I/O).
 
 | Option | Default | Description |
 |--------|---------|-------------|
 | enabled | true | Enable statistics tracking |
-| record_retention_days | 30 | Days to keep violation records (0 = forever) |
-| stats_retention_days | 90 | Days to keep daily stats (0 = forever) |
 
 ---
 

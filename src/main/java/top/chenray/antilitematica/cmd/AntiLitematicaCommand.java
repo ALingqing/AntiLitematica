@@ -9,7 +9,6 @@ import org.bukkit.OfflinePlayer;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
-import org.bukkit.entity.Player;
 import org.jetbrains.annotations.NotNull;
 
 import top.chenray.antilitematica.AntiLitematicaPlugin;
@@ -35,17 +34,6 @@ public final class AntiLitematicaCommand implements CommandExecutor {
             String reloadMsg = msg != null && msg.reload() != null ? msg.reload() : "&aAntiLitematica configuration reloaded.";
             sender.sendMessage(ChatColor.translateAlternateColorCodes('&', reloadMsg));
             return true;
-         case "gui":
-            if (!(sender instanceof Player player)) {
-               sender.sendMessage(ChatColor.RED + "Only players can open the GUI.");
-               return true;
-            }
-            if (!player.hasPermission("antilitematica.admin")) {
-               player.sendMessage(ChatColor.RED + "You don't have permission.");
-               return true;
-            }
-            this.plugin.getConfigGui().openMainPage(player);
-            return true;
          case "status":
             return handleStatus(sender);
          case "reset":
@@ -64,16 +52,8 @@ public final class AntiLitematicaCommand implements CommandExecutor {
                try { page = Math.max(1, Integer.parseInt(args[2])); } catch (NumberFormatException e) { /* ignore */ }
             }
             return handleHistory(sender, args[1], page);
-         case "update":
-            return handleUpdate(sender);
-         case "export":
-            return handleExport(sender, args);
-         case "import":
-            return handleImport(sender, args);
          case "testnotify":
             return handleTestNotify(sender);
-         case "kickall":
-            return handleKickAll(sender);
          case "whitelist":
             return handleWhitelist(sender, args);
          default:
@@ -171,24 +151,6 @@ public final class AntiLitematicaCommand implements CommandExecutor {
       return true;
    }
 
-   private boolean handleUpdate(CommandSender sender) {
-      if (this.plugin.getUpdateChecker() == null) {
-         sender.sendMessage(ChatColor.RED + "Update checker not available.");
-         return true;
-      }
-      if (this.plugin.getUpdateChecker().isUpdateAvailable()) {
-         sender.sendMessage(ChatColor.GREEN + "Update available: v" + this.plugin.getUpdateChecker().getLatestVersion()
-               + " (current: v" + this.plugin.getDescription().getVersion() + ")");
-         sender.sendMessage(ChatColor.GRAY + "Download: " + ChatColor.AQUA + this.plugin.getUpdateChecker().getLatestDownloadUrl());
-      } else {
-         sender.sendMessage(ChatColor.GREEN + "You are running the latest version (v"
-               + this.plugin.getDescription().getVersion() + ").");
-         // Force re-check
-         this.plugin.getUpdateChecker().checkAsync();
-      }
-      return true;
-   }
-
    private boolean handleTestNotify(CommandSender sender) {
       Settings s = this.plugin.settings();
       int sent = 0;
@@ -234,24 +196,6 @@ public final class AntiLitematicaCommand implements CommandExecutor {
       } else {
          sender.sendMessage(ChatColor.GRAY + "Result: " + ChatColor.GREEN + sent + " succeeded"
                + ChatColor.GRAY + ", " + ChatColor.RED + failed + " failed");
-      }
-      return true;
-   }
-
-   private boolean handleKickAll(CommandSender sender) {
-      int kicked = 0;
-      for (Player p : Bukkit.getOnlinePlayers()) {
-         if (p.hasPermission("antilitematica.bypass")) continue;
-         if (this.plugin.isPunished(p.getUniqueId())) {
-            Bukkit.getScheduler().runTask(this.plugin, () -> {
-               p.kickPlayer(ChatColor.RED + "Kicked by admin (AntiLitematica batch)");
-            });
-            kicked++;
-         }
-      }
-      sender.sendMessage(ChatColor.GREEN + "Kicked " + kicked + " flagged players.");
-      if (this.plugin.getAuditLogger() != null) {
-         this.plugin.getAuditLogger().log("kickall", sender.getName(), kicked + " players kicked");
       }
       return true;
    }
@@ -308,130 +252,6 @@ public final class AntiLitematicaCommand implements CommandExecutor {
             sender.sendMessage(ChatColor.RED + "Unknown subcommand: " + sub);
             return true;
       }
-   }
-
-   private boolean handleExport(CommandSender sender, String[] args) {
-      var tracker = this.plugin.getPunishmentTracker();
-      if (tracker == null) {
-         sender.sendMessage(ChatColor.RED + "Graduated punishment system is not enabled.");
-         return true;
-      }
-      List<ViolationRecord> records = tracker.getAllRecords();
-      java.io.File exportFile = new java.io.File(this.plugin.getDataFolder(), "violations_export.json");
-      try {
-         StringBuilder json = new StringBuilder();
-         json.append("{\n  \"exported_at\": \"").append(java.time.Instant.now()).append("\",\n");
-         json.append("  \"total\": ").append(records.size()).append(",\n");
-         json.append("  \"records\": [\n");
-         for (int i = 0; i < records.size(); i++) {
-            ViolationRecord r = records.get(i);
-            json.append("    {");
-            json.append("\"uuid\":\"").append(escapeJson(r.uuid().toString())).append("\",");
-            json.append("\"playerName\":\"").append(escapeJson(r.playerName())).append("\",");
-            json.append("\"count\":").append(r.count()).append(",");
-            json.append("\"totalViolations\":").append(r.totalViolations()).append(",");
-            json.append("\"firstViolation\":").append(r.firstViolation()).append(",");
-            json.append("\"lastViolation\":").append(r.lastViolation());
-            json.append("}");
-            if (i < records.size() - 1) json.append(",");
-            json.append("\n");
-         }
-         json.append("  ]\n}");
-         java.nio.file.Files.writeString(exportFile.toPath(), json.toString(), java.nio.charset.StandardCharsets.UTF_8);
-         sender.sendMessage(ChatColor.GREEN + "Exported " + records.size() + " records to " + exportFile.getName());
-      } catch (java.io.IOException e) {
-         sender.sendMessage(ChatColor.RED + "Export failed: " + e.getMessage());
-      }
-      return true;
-   }
-
-   private boolean handleImport(CommandSender sender, String[] args) {
-      var tracker = this.plugin.getPunishmentTracker();
-      if (tracker == null) {
-         sender.sendMessage(ChatColor.RED + "Graduated punishment system is not enabled.");
-         return true;
-      }
-      java.io.File importFile = new java.io.File(this.plugin.getDataFolder(), "violations_export.json");
-      if (!importFile.exists()) {
-         sender.sendMessage(ChatColor.RED + "Export file not found: " + importFile.getName());
-         sender.sendMessage(ChatColor.GRAY + "Run /al export first or place violations_export.json in the plugin folder.");
-         return true;
-      }
-      try {
-         String content = java.nio.file.Files.readString(importFile.toPath(), java.nio.charset.StandardCharsets.UTF_8);
-         // Simple JSON parsing without external dependencies
-         String recordsSection = content.substring(content.indexOf("\"records\""));
-         int arrayStart = recordsSection.indexOf("[");
-         int arrayEnd = recordsSection.lastIndexOf("]");
-         if (arrayStart < 0 || arrayEnd < 0) {
-            sender.sendMessage(ChatColor.RED + "Invalid export file format.");
-            return true;
-         }
-         String arrayContent = recordsSection.substring(arrayStart + 1, arrayEnd);
-         String[] entries = arrayContent.split("\\},\\s*\\{");
-         int count = 0;
-         for (String entry : entries) {
-            String clean = entry.replace("{", "").replace("}", "").trim();
-            if (clean.isEmpty()) continue;
-            String uuidStr = extractJsonField(clean, "uuid");
-            String name = extractJsonField(clean, "playerName");
-            int cnt = parseIntField(clean, "count");
-            int total = parseIntField(clean, "totalViolations");
-            long first = parseLongField(clean, "firstViolation");
-            long last = parseLongField(clean, "lastViolation");
-            if (uuidStr != null) {
-               UUID uuid = UUID.fromString(uuidStr);
-               ViolationRecord record = new ViolationRecord(uuid, name != null ? name : "unknown", cnt, first, last, total);
-               tracker.importRecord(record);
-               count++;
-            }
-         }
-         sender.sendMessage(ChatColor.GREEN + "Imported " + count + " records from " + importFile.getName());
-      } catch (Exception e) {
-         sender.sendMessage(ChatColor.RED + "Import failed: " + e.getMessage());
-      }
-      return true;
-   }
-
-   private static String extractJsonField(String json, String key) {
-      String search = "\"" + key + "\":\"";
-      int start = json.indexOf(search);
-      if (start >= 0) {
-         start += search.length();
-         int end = json.indexOf("\"", start);
-         if (end >= 0) return json.substring(start, end);
-      }
-      return null;
-   }
-
-   private static int parseIntField(String json, String key) {
-      String search = "\"" + key + "\":";
-      int start = json.indexOf(search);
-      if (start >= 0) {
-         start += search.length();
-         int end = json.indexOf(",", start);
-         if (end < 0) end = json.indexOf("}", start);
-         if (end < 0) end = json.length();
-         try { return Integer.parseInt(json.substring(start, end).trim()); } catch (Exception e) { /* ignore */ }
-      }
-      return 0;
-   }
-
-   private static long parseLongField(String json, String key) {
-      String search = "\"" + key + "\":";
-      int start = json.indexOf(search);
-      if (start >= 0) {
-         start += search.length();
-         int end = json.indexOf(",", start);
-         if (end < 0) end = json.indexOf("}", start);
-         if (end < 0) end = json.length();
-         try { return Long.parseLong(json.substring(start, end).trim()); } catch (Exception e) { /* ignore */ }
-      }
-      return 0;
-   }
-
-   private static String escapeJson(String s) {
-      return s == null ? "" : s.replace("\\", "\\\\").replace("\"", "\\\"");
    }
 
    private void saveWhitelist(java.util.Set<String> players) {

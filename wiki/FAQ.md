@@ -121,13 +121,12 @@ Commands in this list are never blocked, even if they match a blocked_commands p
 
 ### Q: What statistics does the plugin track?
 
-The plugin tracks daily detection counts and punishment counts in `stats.yml`. Data is auto-cleaned after the configured retention period.
+The plugin tracks total detection and punishment counts in memory (no disk I/O). Use `/al status` to view them.
 
 ---
 
 ### Q: What monitoring options are available?
 
-- **Admin audit log** in audit.log
 - **Console logs** and dedicated detection log file
 
 ---

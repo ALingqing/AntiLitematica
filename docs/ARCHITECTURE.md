@@ -17,16 +17,15 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 ├──────────┼──────────┼──────────┼──────────┼──────────────────┤
 │ModChannel│Placement │Punisher  │GrimAC    │  DiscordWebhook  │
 │Detector  │Guard     │          │Vulcan    │                  │
-│          │          │Graduated │Matrix    │  UpdateChecker   │
-│Protocol  │Command   │Punisher  │NoOp      │                  │
-│LibBridge │Guard     │          │          │  DetectionLogger │
-│          │          │Punishment│          │  ConfigMigrator  │
-│          │          │Tracker   │          │  StatsTracker    │
-│          │          │          │          │  AuditLogger     │
+│          │          │Graduated │Matrix    │  DetectionLogger │
+│Protocol  │Command   │Punisher  │NoOp      │  ConfigMigrator  │
+│LibBridge │Guard     │          │          │  StatsTracker    │
+│          │          │Punishment│          │                  │
+│          │          │Tracker   │          │                  │
 └──────────┴──────────┴──────────┴──────────┴──────────────────┘
          │            │          │                    │
          ▼            ▼          ▼                    ▼
-     Bukkit Events   Scheduler   SQLite/MySQL/   GitHub API
+     Bukkit Events   Scheduler   SQLite/MySQL/   Discord/QQ API
      ProtocolLib     API         Memory
 ```
 
@@ -135,17 +134,9 @@ AntiLitematica is a Bukkit/Paper plugin for detecting and preventing Litematica/
 
 #### `StatsTracker`
 - **Package:** `top.chenray.antilitematica.util`
-- **Purpose:** Tracks daily detection/punishment counts, hit rates
-- **Storage:** stats.yml with configurable retention days
+- **Purpose:** In-memory detection/punishment counters
+- **Storage:** None (pure in-memory)
 - **Integration:** Called from Punisher and GraduatedPunisher
-
-#### `AuditLogger`
-- **Package:** `top.chenray.antilitematica.util`
-- **Purpose:** Logs all admin actions (config changes, resets, kicks) to audit.log
-
-#### `UpdateChecker`
-- **Package:** `top.chenray.antilitematica.update`
-- **Purpose:** Checks GitHub for new versions and notifies admins
 
 ---
 

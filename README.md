@@ -1,8 +1,8 @@
 # AntiLitematica
 
-**Litematica / Schematica / Printer detection plugin for Paper/Spigot**
+**Litematica / Schematica / Printer detection plugin for Paper/Folia**
 
-![Version](https://img.shields.io/badge/version-6.0.0-blue) ![MC Version](https://img.shields.io/badge/1.12.2%2B-green)
+![Version](https://img.shields.io/badge/version-6.3.0-blue) ![MC Version](https://img.shields.io/badge/1.21.4%2B-green)
 [![Build](https://github.com/ALingqing/AntiLitematica/actions/workflows/maven.yml/badge.svg)](https://github.com/ALingqing/AntiLitematica/actions/workflows/maven.yml)
 [![bStats](https://bstats.org/signatures/bukkit/AntiLitematica.svg)](https://bstats.org/plugin/bukkit/AntiLitematica/31012)
 
@@ -29,14 +29,12 @@ Built with ProtocolLib deep inspection, a graduated punishment system, and Geyse
 - **OneBot 11 (QQ Bot)** -- Send notifications to QQ groups via LLBot/go-cqhttp
 - **Anti-Cheat Integration** -- Optional integration with GrimAC, Vulcan, or Matrix
 - **Dynamic Thresholds** -- Auto-adjusts detection sensitivity based on TPS and player count
-- **In-Game GUI** -- Manage settings through an inventory interface with live reload
 - **PlaceholderAPI Support** -- Placeholders for external plugins
 - **Violation Whitelist** -- Trusted players: log only, no punishment
 - **MySQL Storage** -- Violation records in MySQL/MariaDB
-- **Detection Statistics** -- Daily detection/punishment counts, hit rate tracking, configurable retention
-- **Admin Audit Log** -- All admin actions logged to audit.log
+- **Detection Statistics** -- In-memory detection/punishment counters
 - **Config Auto-Migration** -- Old config.yml auto-updated with new defaults
-- **Multi-Language** -- Auto-detects player client language (50+ locales), falls back through chain
+- **Multi-Language** -- Built-in lang files for zh_CN, en_US, zh_TW
 - **Public API** -- AntiLitematicaAPI interface with DetectionEvent (cancellable) and PunishmentEvent
 
 
@@ -74,15 +72,10 @@ All checks respect antilitematica.bypass and auto-exempt Geyser Bedrock players.
 | Command | Alias | Description |
 |---------|-------|-------------|
 | `/al reload` | | Reload configuration |
-| `/al gui` | | Open configuration GUI |
 | `/al status` | | View plugin status |
-| `/al update` | | Check GitHub for updates |
 | `/al reset <player\|all\|expired>` | | Reset violation records |
 | `/al history <player> [page]` | | View violation history |
-| `/al export` | | Export records to JSON |
-| `/al import` | | Import records from JSON |
 | `/al testnotify` | | Test Discord/OneBot notifications |
-| `/al kickall` | | Kick all flagged players |
 | `/al whitelist list\|add\|remove` | | Manage whitelist |
 
 Full reference: [wiki/COMMANDS.md](wiki/COMMANDS.md)
@@ -169,7 +162,7 @@ Built with Java 21 and Maven 3. CI via GitHub Actions.
 ## Compatibility
 
 - **Server:** Paper, Spigot, Purpur (1.12.2+)
-- **Paper API:** 1.21.11+ (Minecraft 1.21.11+)
+- **Paper API:** 26.1.2 (Minecraft 1.21.4+)
 - **Java:** 21+
 - **Geyser/Floodgate:** Fully supported, Bedrock players auto-exempted
 - **Ban Plugins:** LiteBans, AdvancedBan, EssentialsX
