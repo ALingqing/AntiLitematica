@@ -20,6 +20,7 @@ import org.bukkit.event.player.PlayerQuitEvent;
 import top.chenray.antilitematica.AntiLitematicaPlugin;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.util.Msg;
+import top.chenray.antilitematica.util.SchedulerUtil;
 import top.chenray.antilitematica.util.ViolationWindow;
 
 /**
@@ -151,7 +152,7 @@ public final class CommandGuard implements Listener {
       if (n >= plugin.getDynamicThresholdManager().adjustInt(this.settings.commandGuard().violations().kickAt())) {
          if (p.isOnline()) {
             this.plugin.getLogger().info("Kicking " + p.getName() + " due to repeated blocked commands (" + type + "), violations=" + n);
-            Bukkit.getScheduler().runTask(this.plugin, () -> {
+            SchedulerUtil.runForPlayer(this.plugin, p, () -> {
                if (p.isOnline() && !shouldBypass(p)) {
                   String prefix = Msg.prefix(this.settings);
                   p.kickPlayer(Msg.color(prefix + this.settings.messages().kick()));

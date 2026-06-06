@@ -14,9 +14,11 @@ import java.util.Properties;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
-import org.bukkit.Bukkit;
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.entity.Player;
 import org.bukkit.plugin.Plugin;
+
+import top.chenray.antilitematica.util.SchedulerUtil;
 
 /**
  * Manages violation records using SQLite, MySQL, or in-memory storage.
@@ -26,6 +28,7 @@ public final class PunishmentTracker {
    private final String storageType; // "sqlite", "mysql", "memory"
    private final long windowMinutes;
    private Connection connection;
+   private ScheduledTask cleanupTask;
    private final Map<UUID, ViolationRecord> memoryCache = new ConcurrentHashMap<>();
 
    // MySQL config
@@ -66,8 +69,8 @@ public final class PunishmentTracker {
                plugin.getLogger().info("Violation storage: memory (data lost on restart)");
                return;
          }
-         // Schedule cleanup every 24 hours
-         Bukkit.getScheduler().runTaskTimerAsynchronously(this.plugin, this::cleanupOldRecords,
+         // Schedule cleanup every 24 hours (Folia-compatible async timer)
+         cleanupTask = SchedulerUtil.runTimerAsync(this.plugin, this::cleanupOldRecords,
                20L * 60L * 60L * 24L, 20L * 60L * 60L * 24L);
       } catch (Exception e) {
          this.plugin.getLogger().severe("Failed to initialize " + storageType + ": " + e.getMessage());
@@ -230,6 +233,10 @@ public final class PunishmentTracker {
    }
 
    public void shutdown() {
+      if (cleanupTask != null) {
+         cleanupTask.cancel();
+         cleanupTask = null;
+      }
       if (this.connection != null) {
          try {
             this.connection.close();

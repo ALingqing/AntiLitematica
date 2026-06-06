@@ -1,8 +1,8 @@
 # AntiLitematica
 
-**Litematica / Schematica / Printer detection plugin for Paper/Spigot**
+**Litematica / Schematica / Printer detection plugin for Paper/Folia**
 
-![Version](https://img.shields.io/badge/version-6.0.0-blue) ![MC Version](https://img.shields.io/badge/1.12.2%2B-green)
+![Version](https://img.shields.io/badge/version-6.3.0-blue) ![MC Version](https://img.shields.io/badge/1.21.4%2B-green)
 [![Build](https://github.com/ALingqing/AntiLitematica/actions/workflows/maven.yml/badge.svg)](https://github.com/ALingqing/AntiLitematica/actions/workflows/maven.yml)
 [![bStats](https://bstats.org/signatures/bukkit/AntiLitematica.svg)](https://bstats.org/plugin/bukkit/AntiLitematica/31012)
 
@@ -162,7 +162,7 @@ Built with Java 21 and Maven 3. CI via GitHub Actions.
 ## Compatibility
 
 - **Server:** Paper, Spigot, Purpur (1.12.2+)
-- **Paper API:** 1.21.11+ (Minecraft 1.21.11+)
+- **Paper API:** 26.1.2 (Minecraft 1.21.4+)
 - **Java:** 21+
 - **Geyser/Floodgate:** Fully supported, Bedrock players auto-exempted
 - **Ban Plugins:** LiteBans, AdvancedBan, EssentialsX

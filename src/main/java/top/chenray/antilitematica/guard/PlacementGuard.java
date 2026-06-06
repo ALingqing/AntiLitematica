@@ -28,6 +28,7 @@ import top.chenray.antilitematica.api.event.DetectionEvent;
 import top.chenray.antilitematica.api.event.PunishmentEvent;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.util.Msg;
+import top.chenray.antilitematica.util.SchedulerUtil;
 import top.chenray.antilitematica.util.TokenBucket;
 import top.chenray.antilitematica.util.ViolationWindow;
 
@@ -207,13 +208,13 @@ public final class PlacementGuard implements Listener {
          if (p.isOnline() && !detectionEvent.isCancelled()) {
             this.plugin.getLogger().info("Kicking " + p.getName() + " due to repeated blocked placements (" + type + "), violations=" + n);
             final String kickMsgStr = Msg.color(Msg.prefix(this.settings) + this.settings.messages().kick());
-            Bukkit.getScheduler().runTask(this.plugin, () -> {
+            SchedulerUtil.runForPlayer(this.plugin, p, () -> {
                if (p.isOnline() && !shouldBypass(p)) {
                   p.kickPlayer(kickMsgStr);
                }
             });
             // ---- Fire PunishmentEvent ----
-            Bukkit.getScheduler().runTask(this.plugin, () -> {
+            SchedulerUtil.runGlobal(this.plugin, () -> {
                try {
                   PunishmentEvent pe = new PunishmentEvent(p, "printer", type,
                         PunishmentEvent.PunishmentAction.KICK, n, "printer");

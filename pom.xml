@@ -6,11 +6,11 @@
 
 	<groupId>top.chenray</groupId>
 	<artifactId>AntiLitematica</artifactId>
-	<version>6.1.0</version>
+	<version>6.3.0</version>
 	<packaging>jar</packaging>
 
 	<name>AntiLitematica</name>
-	<description>Anti Litematica/Printer plugin for Paper/Spigot servers</description>
+	<description>Anti Litematica/Printer plugin for Paper/Folia servers</description>
 
 	<properties>
 		<maven.compiler.source>21</maven.compiler.source>
@@ -43,11 +43,11 @@
 	</repositories>
 
 	<dependencies>
-		<!-- Paper API 1.21.11 (compatible with Java 21) -->
+		<!-- Paper API 26.1.2 (Minecraft 1.21.4+, Java 21) -->
 		<dependency>
 			<groupId>io.papermc.paper</groupId>
 			<artifactId>paper-api</artifactId>
-			<version>1.21.11-R0.1-SNAPSHOT</version>
+			<version>26.1.2</version>
 			<scope>provided</scope>
 		</dependency>
         

@@ -1,5 +1,39 @@
 # Changelog
 
+## v6.3.0 (2026-06-06)
+
+### Paper API Update
+
+- Updated to **Paper API 26.1.2** (Minecraft 1.21.4+, stable release).
+
+## v6.2.0 (2026-06-06)
+
+### Folia Support
+
+- **Folia-compatible** — Replaced all `Bukkit.getScheduler()` calls with Folia-aware scheduling via `SchedulerUtil`.
+  - Player operations (kick, sendMessage) use `player.getScheduler().run()` (entity region thread).
+  - Global sync tasks use `Bukkit.getGlobalRegionScheduler().run()`.
+  - Async timers use `Bukkit.getAsyncScheduler().runAtFixedRate()` with millisecond conversion.
+- **New utility** — `SchedulerUtil.java` provides a clean, unified API across Paper and Folia.
+- **plugin.yml** — Added `folia-supported: true`.
+
+### Removed
+
+- **LocaleManager** — Dead code: per-player locale resolution was never actually called. Message delivery already goes through `Settings.Messages` and `lang/messages_*.yml`.
+- **AuditLogger** — Dead code: `auditLogger.log()` was never invoked anywhere.
+- **In-Game GUI** — Entire `gui/` package removed (~500 lines). Administrators primarily use `config.yml` directly.
+- **UpdateChecker** — Removed GitHub API version check. Update manually via GitHub Releases.
+- **`/al gui`** / **`/al update`** / **`/al export`** / **`/al import`** / **`/al kickall`** — Removed rarely-used subcommands and their helper methods.
+
+### Simplified
+
+- **StatsTracker** — Replaced YAML persistence + batched saves + retention cleanup with pure in-memory `AtomicInteger` counters. Zero disk I/O.
+- **config.yml** — Removed `stats.record_retention_days` and `stats.stats_retention_days` (no longer applicable).
+
+### Documentation
+
+- README, wiki/, docs/ updated to reflect all removals and simplifications.
+
 ## v6.1.0 (2026-05-29)
 
 ### Removed

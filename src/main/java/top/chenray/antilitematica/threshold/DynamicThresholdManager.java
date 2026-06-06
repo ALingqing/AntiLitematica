@@ -1,16 +1,17 @@
 package top.chenray.antilitematica.threshold;
 
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
-import org.bukkit.scheduler.BukkitRunnable;
 
 import top.chenray.antilitematica.AntiLitematicaPlugin;
+import top.chenray.antilitematica.util.SchedulerUtil;
 
 public class DynamicThresholdManager {
 
    private final AntiLitematicaPlugin plugin;
    private double currentMultiplier = 1.0;
    private boolean enabled;
-   private int taskId = -1;
+   private ScheduledTask task;
 
    // Cached config values, refreshed on reload()
    private double tpsHigh = 19.5;
@@ -43,19 +44,14 @@ public class DynamicThresholdManager {
    }
 
    public void stop() {
-      if (taskId != -1) {
-         Bukkit.getScheduler().cancelTask(taskId);
-         taskId = -1;
+      if (task != null) {
+         task.cancel();
+         task = null;
       }
    }
 
    private void startTask() {
-      taskId = new BukkitRunnable() {
-         @Override
-         public void run() {
-            recalculate();
-         }
-      }.runTaskTimer(plugin, interval * 20L, interval * 20L).getTaskId();
+      task = SchedulerUtil.runTimerGlobal(plugin, this::recalculate, interval * 20L, interval * 20L);
    }
 
    private void recalculate() {

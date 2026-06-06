@@ -8,8 +8,10 @@ import java.text.SimpleDateFormat;
 import java.util.ArrayList;
 import java.util.Date;
 import java.util.List;
+import java.util.concurrent.TimeUnit;
 import java.util.logging.Level;
 
+import io.papermc.paper.threadedregions.scheduler.ScheduledTask;
 import org.bukkit.Bukkit;
 import org.bukkit.plugin.Plugin;
 
@@ -30,7 +32,7 @@ public final class DetectionLogger {
     private PrintWriter writer;
     private boolean enabled;
     private final List<String> pendingLines = new ArrayList<>();
-    private int flushTaskId = -1;
+    private ScheduledTask flushTask;
 
     public DetectionLogger(Plugin plugin, boolean enabled, String fileName) {
         this.plugin = plugin;
@@ -44,9 +46,10 @@ public final class DetectionLogger {
     }
 
     private void startFlushTask() {
-        flushTaskId = Bukkit.getScheduler().runTaskTimerAsynchronously(plugin, () -> {
-            flush();
-        }, FLUSH_INTERVAL_TICKS, FLUSH_INTERVAL_TICKS).getTaskId();
+        flushTask = Bukkit.getAsyncScheduler().runAtFixedRate(plugin,
+                t -> flush(),
+                FLUSH_INTERVAL_TICKS * 50L, FLUSH_INTERVAL_TICKS * 50L,
+                TimeUnit.MILLISECONDS);
     }
 
     /** Flush all pending lines to disk. */
@@ -128,9 +131,9 @@ public final class DetectionLogger {
 
     /** Flush remaining lines and cancel flush task. Call on plugin disable. */
     public void close() {
-        if (flushTaskId != -1) {
-            Bukkit.getScheduler().cancelTask(flushTaskId);
-            flushTaskId = -1;
+        if (flushTask != null) {
+            flushTask.cancel();
+            flushTask = null;
         }
         flush();
         if (writer != null) {
