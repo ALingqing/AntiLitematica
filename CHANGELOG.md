@@ -4,7 +4,7 @@
 
 ### Paper API Update
 
-- Updated to **Paper API 26.1.2** (Minecraft 1.21.4+, stable release).
+- Updated to **Paper API 26.1.2.build.69-stable** (Minecraft 1.21.4+).
 
 ## v6.2.0 (2026-06-06)
 
