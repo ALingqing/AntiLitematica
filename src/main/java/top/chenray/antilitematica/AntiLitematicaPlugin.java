@@ -15,9 +15,6 @@ import top.chenray.antilitematica.cmd.AntiLitematicaCommand;
 import top.chenray.antilitematica.config.ConfigMigrator;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.detection.ModChannelDetector;
-import top.chenray.antilitematica.gui.ConfigGui;
-import top.chenray.antilitematica.gui.GuiInputManager;
-import top.chenray.antilitematica.gui.GuiListener;
 import top.chenray.antilitematica.guard.CommandGuard;
 import top.chenray.antilitematica.guard.PlacementGuard;
 import top.chenray.antilitematica.integration.IntegrationManager;
@@ -28,10 +25,7 @@ import top.chenray.antilitematica.placeholder.AntiLitematicaExpansion;
 import top.chenray.antilitematica.state.PunishStateListener;
 import top.chenray.antilitematica.threshold.DynamicThresholdManager;
 import top.chenray.antilitematica.api.AntiLitematicaAPIImpl;
-import top.chenray.antilitematica.update.UpdateChecker;
-import top.chenray.antilitematica.util.AuditLogger;
 import top.chenray.antilitematica.util.DetectionLogger;
-import top.chenray.antilitematica.util.LocaleManager;
 import top.chenray.antilitematica.util.OneBotNotifier;
 import top.chenray.antilitematica.util.StatsTracker;
 
@@ -45,16 +39,10 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private PunishmentTracker punishmentTracker;
    private GraduatedPunisher graduatedPunisher;
    private final Set<UUID> punished = ConcurrentHashMap.newKeySet();
-   private ConfigGui configGui;
-   private GuiInputManager guiInputManager;
-   private GuiListener guiListener;
    private DynamicThresholdManager dynamicThresholdManager;
-   private UpdateChecker updateChecker;
    private DetectionLogger detectionLogger;
    private OneBotNotifier oneBotNotifier;
-   private LocaleManager localeManager;
    private StatsTracker statsTracker;
-   private AuditLogger auditLogger;
 
    public void onEnable() {
       // Fancy startup ASCII art
@@ -88,10 +76,6 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
             }
          }
       }
-      this.guiInputManager = new GuiInputManager(this);
-      this.configGui = new ConfigGui(this, this.guiInputManager);
-      this.guiListener = new GuiListener(this, this.configGui, this.guiInputManager);
-      this.getServer().getPluginManager().registerEvents(this.guiListener, this);
       this.getServer().getPluginManager().registerEvents(new PunishStateListener(this), this);
       PluginCommand cmd = this.getCommand("antilitematica");
       if (cmd != null) {
@@ -113,27 +97,14 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          metrics.addCustomChart(new SimplePie("detection_action", () -> this.settings.detection().action().name()));
       }
 
-      // Auto-update checker
-      this.updateChecker = new UpdateChecker(this);
-      this.updateChecker.start();
-
       // ---- Detection Logger ----
       boolean logEnabled = this.getConfig().getBoolean("detection_log.enabled", false);
       String logFile = this.getConfig().getString("detection_log.file", "detections.log");
       this.detectionLogger = new DetectionLogger(this, logEnabled, logFile);
 
-      // ---- Stats Tracker ----
+      // ---- Stats Tracker (pure in-memory) ----
       boolean statsEnabled = this.getConfig().getBoolean("stats.enabled", true);
-      int recordRetention = this.getConfig().getInt("stats.record_retention_days", 30);
-      int statsRetention = this.getConfig().getInt("stats.stats_retention_days", 90);
-      this.statsTracker = new StatsTracker(this, statsEnabled, recordRetention, statsRetention);
-
-      // ---- Audit Logger ----
-      this.auditLogger = new AuditLogger(this);
-
-      // ---- Locale Manager ----
-      this.localeManager = new LocaleManager(this,
-            this.settings.lang(), this.settings.autoLocale());
+      this.statsTracker = new StatsTracker(statsEnabled);
 
       // ---- OneBot (QQ Bot) notifier ----
       if (this.settings.onebot() != null && this.settings.onebot().enabled()) {
@@ -178,16 +149,8 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          this.punishmentTracker.shutdown();
       }
 
-      if (this.updateChecker != null) {
-         // UpdateChecker listeners auto-cleaned by HandlerList
-      }
-
       if (this.detectionLogger != null) {
          this.detectionLogger.close();
-      }
-
-      if (this.auditLogger != null) {
-         this.auditLogger.close();
       }
 
       if (this.statsTracker != null) {
@@ -195,9 +158,6 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       }
 
       this.punished.clear();
-      if (this.guiInputManager != null) {
-         this.guiInputManager.shutdown();
-      }
    }
 
    public Settings settings() {
@@ -229,14 +189,6 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
       if (this.punishmentTracker != null) {
          this.punishmentTracker.shutdown();
-      }
-
-      // Reload locale manager
-      if (this.localeManager != null) {
-         this.localeManager.clearCache();
-      } else {
-         this.localeManager = new LocaleManager(this,
-               this.settings.lang(), this.settings.autoLocale());
       }
 
       this.punished.clear();
@@ -293,20 +245,8 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       return this.graduatedPunisher;
    }
 
-   public ConfigGui getConfigGui() {
-      return this.configGui;
-   }
-
-   public GuiInputManager getGuiInputManager() {
-      return this.guiInputManager;
-   }
-
    public DynamicThresholdManager getDynamicThresholdManager() {
       return this.dynamicThresholdManager;
-   }
-
-   public UpdateChecker getUpdateChecker() {
-      return this.updateChecker;
    }
 
    public DetectionLogger getDetectionLogger() {
@@ -317,15 +257,7 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       return this.oneBotNotifier;
    }
 
-   public LocaleManager getLocaleManager() {
-      return this.localeManager;
-   }
-
    public StatsTracker getStatsTracker() {
       return this.statsTracker;
-   }
-
-   public AuditLogger getAuditLogger() {
-      return this.auditLogger;
    }
 }
