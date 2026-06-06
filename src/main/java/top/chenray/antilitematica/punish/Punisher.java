@@ -74,6 +74,17 @@ public final class Punisher {
          case LOG:
             plugin.getLogger().info("Detected blocked channel '" + channel + "' from " + player.getName() + " via " + why);
             break;
+         case WARN:
+            actionName = "WARN";
+            // 仅发送警告消息给玩家，不执行踢出或封禁
+            plugin.getLogger().info("Warning " + player.getName() + " (blocked channel '" + channel + "' via " + why + ")");
+            String warnMsg = Msg.color(Msg.prefix(settings) + (det.reason() != null ? det.reason() : "Forbidden client mod detected."));
+            Bukkit.getScheduler().runTask(plugin, () -> {
+               if (player.isOnline() && !player.hasPermission("antilitematica.bypass")) {
+                  player.sendMessage(warnMsg);
+               }
+            });
+            break;
          case KICK:
             actionName = "KICK";
             punishExecuted = true;

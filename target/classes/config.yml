@@ -36,6 +36,8 @@ detection:
       cancel_packet: true
   # 检测后的处理动作：LOG/KICK/BAN/COMMANDS
   action: "KICK"
+  # 兼容新配置：惩罚模式（LOG / WARN / KICK）
+  punish_mode: "KICK"
   reason: "Forbidden client mod detected (Litematica)."
 
 # 反 Printer：分析方块放置行为

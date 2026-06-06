@@ -27,7 +27,10 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
       Messages messages = new Messages(prefix, kickMsg, blockedPlaceMsg, reloadMsg);
       ConfigurationSection det = section(cfg, "detection");
       Set<String> channels = normalizedSet(det.getStringList("channels"));
-      DetectionAction action = Settings.DetectionAction.fromString(det.getString("action", "KICK"));
+      // 新配置：punish_mode，向后兼容原有的 action
+      String punishMode = det.getString("punish_mode", null);
+      DetectionAction action = punishMode != null ? Settings.DetectionAction.fromString(punishMode)
+         : Settings.DetectionAction.fromString(det.getString("action", "KICK"));
       String reason = det.getString("reason", "Forbidden client mod detected (Litematica).");
       List<String> commands = det.getStringList("commands");
       boolean kickAfterCommands = det.getBoolean("kick_after_commands", true);
@@ -246,6 +249,7 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
 
    public static enum DetectionAction {
       LOG,
+      WARN,
       KICK,
       BAN,
       COMMANDS;
@@ -257,6 +261,8 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
          switch (s.trim().toUpperCase(Locale.ROOT)) {
             case "LOG":
                return LOG;
+            case "WARN":
+               return WARN;
             case "BAN":
                return BAN;
             case "COMMAND":
