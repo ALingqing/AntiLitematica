@@ -2,7 +2,6 @@ package top.chenray.antilitematica.guard;
 
 import java.util.ArrayDeque;
 import java.util.Deque;
-import java.util.HashSet;
 import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
@@ -36,13 +35,8 @@ import top.chenray.antilitematica.util.ViolationWindow;
 public final class PlacementGuard implements Listener {
    private final AntiLitematicaPlugin plugin;
    private final Settings settings;
-   // World-aware tracking: world name -> (player uuid -> tracker)
-   private final Map<String, Map<UUID, TokenBucket>> worldBuckets = new ConcurrentHashMap<>();
-   private final Map<String, Map<UUID, ViolationWindow>> worldViolations = new ConcurrentHashMap<>();
-   private final Map<String, Map<UUID, Deque<PlacementSnapshot>>> worldRecentPlacements = new ConcurrentHashMap<>();
-   private final Map<String, Map<UUID, Float>> worldLastYaw = new ConcurrentHashMap<>();
-   private final Map<String, Map<UUID, Float>> worldLastPitch = new ConcurrentHashMap<>();
-   private final Map<String, Map<UUID, Integer>> worldNoLookChangeCount = new ConcurrentHashMap<>();
+   /** Unified per-player tracking: player UUID -> tracker. Single map, single cleanup point. */
+   private final Map<UUID, PlayerTracker> trackers = new ConcurrentHashMap<>();
    /** Cached set of staff UUIDs with antilitematica.notify permission. */
    private final Set<UUID> staffNotify = ConcurrentHashMap.newKeySet();
 
@@ -89,20 +83,11 @@ public final class PlacementGuard implements Listener {
 
    public void shutdown() {
       HandlerList.unregisterAll(this);
-      this.worldBuckets.clear();
-      this.worldViolations.clear();
-      this.worldRecentPlacements.clear();
-      this.worldLastYaw.clear();
-      this.worldLastPitch.clear();
-      this.worldNoLookChangeCount.clear();
+      this.trackers.clear();
       this.staffNotify.clear();
    }
 
    /** Get world key for map lookups. */
-   private static String worldKey(Player p) {
-      return p.getWorld().getName().toLowerCase(java.util.Locale.ROOT);
-   }
-
    @EventHandler(
       priority = EventPriority.HIGHEST,
       ignoreCancelled = true
@@ -174,43 +159,24 @@ public final class PlacementGuard implements Listener {
    @EventHandler
    public void onQuit(PlayerQuitEvent event) {
       UUID id = event.getPlayer().getUniqueId();
-      // Remove from all worlds
-      for (Map<UUID, ?> map : this.worldBuckets.values()) map.remove(id);
-      for (Map<UUID, ?> map : this.worldViolations.values()) map.remove(id);
-      for (Map<UUID, ?> map : this.worldRecentPlacements.values()) map.remove(id);
-      for (Map<UUID, ?> map : this.worldLastYaw.values()) map.remove(id);
-      for (Map<UUID, ?> map : this.worldLastPitch.values()) map.remove(id);
-      for (Map<UUID, ?> map : this.worldNoLookChangeCount.values()) map.remove(id);
+      this.trackers.remove(id);
       this.staffNotify.remove(id);
    }
 
    @EventHandler
    public void onWorldChange(PlayerChangedWorldEvent event) {
+      // Reset tracker state for the new world (fresh start in different world)
       Player p = event.getPlayer();
-      String fromWorld = event.getFrom().getName().toLowerCase(java.util.Locale.ROOT);
-      UUID id = p.getUniqueId();
-      // Clear tracking data from the previous world
-      Map<UUID, TokenBucket> prevBuckets = this.worldBuckets.get(fromWorld);
-      if (prevBuckets != null) prevBuckets.remove(id);
-      Map<UUID, ViolationWindow> prevViolations = this.worldViolations.get(fromWorld);
-      if (prevViolations != null) prevViolations.remove(id);
-      Map<UUID, Deque<PlacementSnapshot>> prevRecent = this.worldRecentPlacements.get(fromWorld);
-      if (prevRecent != null) prevRecent.remove(id);
-      Map<UUID, Float> prevYaw = this.worldLastYaw.get(fromWorld);
-      if (prevYaw != null) prevYaw.remove(id);
-      Map<UUID, Float> prevPitch = this.worldLastPitch.get(fromWorld);
-      if (prevPitch != null) prevPitch.remove(id);
-      Map<UUID, Integer> prevNoLook = this.worldNoLookChangeCount.get(fromWorld);
-      if (prevNoLook != null) prevNoLook.remove(id);
+      PlayerTracker tracker = this.trackers.get(p.getUniqueId());
+      if (tracker != null) tracker.resetState();
    }
 
    private boolean consume(Player p, int blocks) {
-      String wKey = worldKey(p);
-      Map<UUID, TokenBucket> buckets = this.worldBuckets.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
-      TokenBucket bucket = buckets.computeIfAbsent(p.getUniqueId(), ignored ->
-         TokenBucket.perSecond(cachedMaxBlocksPerSecond, Math.max(cachedMaxBlocksPerSecond * 2L, 10L))
-      );
-      return bucket.tryConsume(blocks);
+      PlayerTracker tracker = this.trackers.computeIfAbsent(p.getUniqueId(), k -> new PlayerTracker(cachedMaxBlocksPerSecond));
+      if (tracker.bucket == null) {
+         tracker.bucket = TokenBucket.perSecond(cachedMaxBlocksPerSecond, Math.max(cachedMaxBlocksPerSecond * 2L, 10L));
+      }
+      return tracker.bucket.tryConsume(blocks);
    }
 
    private void deny(Cancellable event, Player p, String type) {
@@ -220,11 +186,11 @@ public final class PlacementGuard implements Listener {
          return;
       }
       event.setCancelled(true);
-      String wKey = worldKey(p);
-      Map<UUID, ViolationWindow> violations = this.worldViolations.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
-      ViolationWindow vw = violations.computeIfAbsent(p.getUniqueId(),
-            ignored -> new ViolationWindow(this.settings.antiPrinter().violations().windowMs()));
-      int n = vw.addViolation();
+      PlayerTracker tracker = this.trackers.computeIfAbsent(p.getUniqueId(), k -> new PlayerTracker(cachedMaxBlocksPerSecond));
+      if (tracker.violations == null) {
+         tracker.violations = new ViolationWindow(this.settings.antiPrinter().violations().windowMs());
+      }
+      int n = tracker.violations.addViolation();
 
       if (this.settings.integration().enabled()) {
          Settings.Integration integ = this.settings.integration();
@@ -286,10 +252,12 @@ public final class PlacementGuard implements Listener {
    }
 
    private boolean checkConsecutiveSameType(Player p, Block placed) {
-      String wKey = worldKey(p);
       UUID id = p.getUniqueId();
-      Map<UUID, Deque<PlacementSnapshot>> recent = this.worldRecentPlacements.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
-      Deque<PlacementSnapshot> deque = recent.computeIfAbsent(id, k -> new ArrayDeque<>());
+      PlayerTracker tracker = this.trackers.computeIfAbsent(id, k -> new PlayerTracker(cachedMaxBlocksPerSecond));
+      if (tracker.recentPlacements == null) {
+         tracker.recentPlacements = new ArrayDeque<>();
+      }
+      Deque<PlacementSnapshot> deque = tracker.recentPlacements;
       long now = System.currentTimeMillis();
       String type = placed.getType().name();
       deque.addLast(new PlacementSnapshot(now, type));
@@ -317,16 +285,15 @@ public final class PlacementGuard implements Listener {
    }
 
    private boolean checkNoLookChange(Player p) {
-      String wKey = worldKey(p);
       UUID id = p.getUniqueId();
+      PlayerTracker tracker = this.trackers.computeIfAbsent(id, k -> new PlayerTracker(cachedMaxBlocksPerSecond));
       Location loc = p.getLocation();
       float yaw = loc.getYaw();
       float pitch = loc.getPitch();
-      Map<UUID, Float> yawMap = this.worldLastYaw.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
-      Map<UUID, Float> pitchMap = this.worldLastPitch.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
-      Map<UUID, Integer> noLookMap = this.worldNoLookChangeCount.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
-      Float lastY = yawMap.put(id, yaw);
-      Float lastP = pitchMap.put(id, pitch);
+      Float lastY = tracker.lastYaw;
+      Float lastP = tracker.lastPitch;
+      tracker.lastYaw = yaw;
+      tracker.lastPitch = pitch;
       if (lastY != null && lastP != null) {
          float yawDiff = Math.abs(yaw - lastY);
          float pitchDiff = Math.abs(pitch - lastP);
@@ -335,14 +302,14 @@ public final class PlacementGuard implements Listener {
          // Use different tolerances: yaw is stricter (0.05), pitch allows a bit more (0.1)
          // because vertical mouse movement is more common during building
          if (yawDiff < 0.05f && pitchDiff < 0.1f) {
-            int count = noLookMap.merge(id, 1, Integer::sum);
-            if (count >= Math.max(2, plugin.getDynamicThresholdManager().adjustInt(
+            tracker.noLookCount++;
+            if (tracker.noLookCount >= Math.max(2, plugin.getDynamicThresholdManager().adjustInt(
                   this.settings.antiPrinter().noLookChangeThreshold()))) {
-               noLookMap.put(id, 0);
+               tracker.noLookCount = 0;
                return true;
             }
          } else {
-            noLookMap.put(id, 0);
+            tracker.noLookCount = 0;
          }
       }
       return false;
@@ -361,7 +328,36 @@ public final class PlacementGuard implements Listener {
    }
 
    private static boolean shouldBypass(Player p) {
-      return p.hasPermission("antilitematica.bypass");
+      return p.hasPermission("antilitematica.bypass")
+            || top.chenray.antilitematica.util.BedrockPlayerDetector.isBedrockPlayer(p);
+   }
+
+   /**
+    * Unified per-player tracking data. Replaces 6 separate maps with 1.
+    * Player leaves → one remove() call cleans everything.
+    * Player changes world → resetState() resets counters for fresh start.
+    */
+   private static final class PlayerTracker {
+      TokenBucket bucket;
+      ViolationWindow violations;
+      Deque<PlacementSnapshot> recentPlacements;
+      float lastYaw = Float.NaN;
+      float lastPitch = Float.NaN;
+      int noLookCount;
+
+      PlayerTracker(int maxBlocksPerSecond) {
+         this.bucket = TokenBucket.perSecond(maxBlocksPerSecond, Math.max(maxBlocksPerSecond * 2L, 10L));
+         this.violations = null; // Created lazily in deny()
+      }
+
+      void resetState() {
+         this.bucket = null; // Recreated on next consume()
+         this.violations = null;
+         if (this.recentPlacements != null) this.recentPlacements.clear();
+         this.lastYaw = Float.NaN;
+         this.lastPitch = Float.NaN;
+         this.noLookCount = 0;
+      }
    }
 
    private static final class PlacementSnapshot {

@@ -26,7 +26,7 @@ public class PunishmentEvent extends Event {
     public PunishmentEvent(@NotNull Player player, @Nullable String channel,
                            @NotNull String reason, @NotNull PunishmentAction action,
                            int violationCount, @NotNull String punishmentType) {
-        super(true); // async if needed
+        super(!org.bukkit.Bukkit.isPrimaryThread());
         this.player = player;
         this.channel = channel;
         this.reason = reason;

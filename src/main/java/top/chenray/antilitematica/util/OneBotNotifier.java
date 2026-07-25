@@ -68,7 +68,7 @@ public final class OneBotNotifier {
         if (httpUrl.isEmpty() || groupId <= 0) return false;
         try {
             String json = String.format(
-                    "{\"group_id\":%d,\"message\":\"%s\",\"auto_escape\":false}",
+                    "{\"group_id\":%d,\"message\":\"%s\",\"auto_escape\":true}",
                     groupId, escapeJson(message)
             );
             return post("send_group_msg", json);
@@ -85,7 +85,7 @@ public final class OneBotNotifier {
         if (httpUrl.isEmpty()) return false;
         try {
             String json = String.format(
-                    "{\"user_id\":%d,\"message\":\"%s\",\"auto_escape\":false}",
+                    "{\"user_id\":%d,\"message\":\"%s\",\"auto_escape\":true}",
                     userId, escapeJson(message)
             );
             return post("send_private_msg", json);

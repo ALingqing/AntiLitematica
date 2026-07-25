@@ -274,4 +274,32 @@ public final class NbtLite {
          throw new IOException("bad str len");
       }
    }
+
+   /**
+    * Try to extract a Servux metadata version string from a payload.
+    * Used by both ModChannelDetector and ProtocolLibBridge.
+    */
+   public static String tryExtractServuxVersionString(byte[] payload) {
+      if (payload != null && payload.length >= 2) {
+         MinecraftVarInt.ReadResult rr = MinecraftVarInt.read(payload, 0);
+         if (!rr.ok()) {
+            return null;
+         } else {
+            int packetType = rr.value();
+            int nbtOffset = rr.nextIndex();
+            if (packetType != 2) {
+               return null;
+            } else {
+               String version = NbtLite.tryReadRootCompoundString(payload, nbtOffset, "version");
+               if (version == null) {
+                  return null;
+               } else {
+                  return !version.toLowerCase().contains("litematica") ? null : version;
+               }
+            }
+         }
+      } else {
+         return null;
+      }
+   }
 }

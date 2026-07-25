@@ -6,7 +6,7 @@ import org.bukkit.entity.Player;
 /**
  * AdvancedBan integration via console commands (most reliable across versions).
  */
-public final class AdvancedBanHook implements BanPluginHook {
+public final class AdvancedBanHook extends AbstractBanHook {
    private boolean available = false;
 
    public AdvancedBanHook() {
@@ -24,37 +24,19 @@ public final class AdvancedBanHook implements BanPluginHook {
    }
 
    @Override
-   public void warn(Player player, String reason) {
-      if (player.isOnline()) {
-         player.sendMessage(reason);
-      }
-   }
-
-   @Override
    public void kick(Player player, String reason) {
-      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancedban:kick " + player.getName() + " " + reason);
+      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancedban:kick " + sanitizeName(player.getName()) + " " + sanitize(reason));
    }
 
    @Override
    public void tempBan(Player player, String reason, long durationSeconds) {
       String duration = formatDuration(durationSeconds);
-      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancedban:tempban " + player.getName() + " " + duration + " " + reason);
+      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancedban:tempban " + sanitizeName(player.getName()) + " " + duration + " " + sanitize(reason));
    }
 
    @Override
    public void ban(Player player, String reason) {
-      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancedban:ban " + player.getName() + " " + reason);
+      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "advancedban:ban " + sanitizeName(player.getName()) + " " + sanitize(reason));
    }
 
-   private static String formatDuration(long seconds) {
-      if (seconds < 60) {
-         return seconds + "s";
-      } else if (seconds < 3600) {
-         return (seconds / 60) + "m";
-      } else if (seconds < 86400) {
-         return (seconds / 3600) + "h";
-      } else {
-         return (seconds / 86400) + "d";
-      }
-   }
 }

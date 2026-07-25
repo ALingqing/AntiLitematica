@@ -49,20 +49,184 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private StatsTracker statsTracker;
    private AdminGUI adminGUI;
 
+   @Override
    public void onEnable() {
-      // Fancy startup ASCII art
-      this.getLogger().info("\n" +
-              "   █████╗ ███╗   ██╗████████╗██╗██╗     ██╗████████╗███████╗███╗   ███╗ █████╗ ████████╗██╗██╗  ██╗ █████╗   \n" +
-              "  ██╔══██╗████╗  ██║╚══██╔══╝██║██║     ██║╚══██╔══╝██╔════╝████╗ ████║██╔══██╗╚══██╔══╝██║██║ ██╔╝██╔══██╗  \n" +
-              "  ███████║██╔██╗ ██║   ██║   ██║██║     ██║   ██║   █████╗  ██╔████╔██║███████║   ██║   ██║█████╔╝ ███████║  \n" +
-              "  ██╔══██║██║╚██╗██║   ██║   ██║██║     ██║   ██║   ██╔══╝  ██║╚██╔╝██║██╔══██║   ██║   ██║██╔═██╗ ██╔══██║  \n" +
-              "  ██║  ██║██║ ╚████║   ██║   ██║███████╗██║   ██║   ███████╗██║ ╚═╝ ██║██║  ██║   ██║   ██║██║  ██╗██║  ██║  \n" +
-              "  ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚══════╝╚═╝   ╚═╝   ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝╚═╝  ╚═╝  \n");
-      this.getLogger().info("AntiLitematica enabled | Author: ALingqing_ | Version: " + this.getDescription().getVersion());
-      // Auto-migrate old config files to include new default sections
-      new ConfigMigrator(this).migrate();
+      logAsciiArt();
       this.saveDefaultConfig();
-      // Save bundled language files from JAR resources/lang/ to plugin lang/ folder
+      new ConfigMigrator(this).migrate();
+      saveBundledLangFiles();
+      this.getServer().getPluginManager().registerEvents(new PunishStateListener(this), this);
+
+      PluginCommand cmd = this.getCommand("antilitematica");
+      if (cmd != null) {
+         AntiLitematicaCommand executor = new AntiLitematicaCommand(this);
+         cmd.setExecutor(executor);
+         cmd.setTabCompleter(executor);
+      }
+
+      this.dynamicThresholdManager = new DynamicThresholdManager(this);
+      this.adminGUI = new AdminGUI(this);
+      this.getServer().getPluginManager().registerEvents(this.adminGUI, this);
+
+      this.reloadSettings();
+
+      // PlaceholderAPI
+      if (this.getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
+         new AntiLitematicaExpansion(this).register();
+      }
+
+      // bStats
+      if (this.getConfig().getBoolean("bstats.enabled", true)) {
+         Metrics metrics = new Metrics(this, 31012);
+         metrics.addCustomChart(new SimplePie("detection_action",
+               () -> this.settings != null ? this.settings.detection().action().name() : "NONE"));
+      }
+
+      // API
+      AntiLitematicaAPIImpl api = new AntiLitematicaAPIImpl(this);
+      AntiLitematicaAPIImpl.INSTANCE = api;
+      this.getServer().getServicesManager().register(
+            top.chenray.antilitematica.api.AntiLitematicaAPI.class,
+            api, this, org.bukkit.plugin.ServicePriority.Normal);
+      this.getLogger().info("API registered");
+   }
+
+   @Override
+   public void onDisable() {
+      shutdownAll();
+      this.punished.clear();
+   }
+
+   public void clearPunishedWorld(String worldName) {
+      if (worldName != null) this.punished.remove(worldName.toLowerCase());
+   }
+
+   public void reloadSettings() {
+      shutdownAll();
+      this.reloadConfig();
+      this.settings = Settings.from(this, this.getConfig());
+
+      // ---- Detection Logger ----
+      boolean logEnabled = this.getConfig().getBoolean("detection_log.enabled", false);
+      String logFile = this.getConfig().getString("detection_log.file", "detections.log");
+      this.detectionLogger = new DetectionLogger(this, logEnabled, logFile);
+
+      // ---- Stats Tracker ----
+      boolean statsEnabled = this.getConfig().getBoolean("stats.enabled", true);
+      this.statsTracker = new StatsTracker(statsEnabled);
+
+      if (this.settings.onebot() != null && this.settings.onebot().enabled()) {
+         Settings.OneBot ob = this.settings.onebot();
+         this.oneBotNotifier = new OneBotNotifier(this, ob.httpUrl(), ob.accessToken(), ob.groupId());
+         this.getLogger().info("OneBot notifier enabled: " + ob.httpUrl());
+      }
+
+      if (!this.settings.enabled()) {
+         this.getLogger().info("Disabled by config.");
+         return;
+      }
+
+      this.dynamicThresholdManager.reload();
+      this.integrationManager = new IntegrationManager(this);
+      this.integrationManager.load(this.settings);
+      this.protocolLibBridge = new ProtocolLibBridge(this, this.settings);
+      this.protocolLibBridge.start();
+      this.modChannelDetector = new ModChannelDetector(this, this.settings);
+      this.modChannelDetector.start();
+      this.placementGuard = new PlacementGuard(this, this.settings);
+      this.placementGuard.start();
+      this.commandGuard = new CommandGuard(this, this.settings);
+      this.commandGuard.start();
+
+      if (this.settings.graduatedPunishment() != null && this.settings.graduatedPunishment().enabled()) {
+         Settings.GraduatedPunishment gp = this.settings.graduatedPunishment();
+         String storage = gp.storage();
+         if ("mysql".equals(storage)) {
+            this.punishmentTracker = new PunishmentTracker(this, storage, gp.windowMinutes(),
+                  gp.mysqlHost(), gp.mysqlPort(), gp.mysqlDatabase(),
+                  gp.mysqlUser(), gp.mysqlPassword());
+         } else {
+            this.punishmentTracker = new PunishmentTracker(this, storage, gp.windowMinutes());
+         }
+         this.graduatedPunisher = new GraduatedPunisher(this, this.settings, this.punishmentTracker);
+      }
+   }
+
+   private void shutdownAll() {
+      if (this.modChannelDetector != null) { this.modChannelDetector.shutdown(); }
+      if (this.placementGuard != null) { this.placementGuard.shutdown(); }
+      if (this.commandGuard != null) { this.commandGuard.shutdown(); }
+      if (this.protocolLibBridge != null) { this.protocolLibBridge.shutdown(); }
+      if (this.integrationManager != null) { this.integrationManager.unload(); }
+      if (this.punishmentTracker != null) { this.punishmentTracker.shutdown(); }
+      if (this.detectionLogger != null) { this.detectionLogger.close(); }
+      if (this.statsTracker != null) { this.statsTracker.shutdown(); }
+      this.oneBotNotifier = null;
+      this.punished.clear();
+   }
+
+   // ========================== Punished State (World-Aware) ==========================
+
+   public boolean markPunished(Player player) {
+      String world = player.getWorld() != null ? player.getWorld().getName() : null;
+      return markPunished(player.getUniqueId(), world);
+   }
+
+   public boolean markPunished(UUID uuid, String worldName) {
+      String world = worldName != null ? worldName.toLowerCase() : "_global_";
+      return this.punished.computeIfAbsent(world, k -> ConcurrentHashMap.newKeySet()).add(uuid);
+   }
+
+   public void unmarkPunished(UUID uuid) {
+      this.punished.values().forEach(s -> s.remove(uuid));
+   }
+
+   public void unmarkPunished(UUID uuid, String worldName) {
+      if (worldName == null) { unmarkPunished(uuid); return; }
+      Set<UUID> worldSet = this.punished.get(worldName.toLowerCase());
+      if (worldSet != null) worldSet.remove(uuid);
+   }
+
+   public boolean isPunished(UUID uuid) {
+      return this.punished.values().stream().anyMatch(s -> s.contains(uuid));
+   }
+
+   public boolean isPunished(Player player) {
+      String world = player.getWorld() != null ? player.getWorld().getName().toLowerCase() : null;
+      if (world != null) {
+         Set<UUID> worldSet = this.punished.get(world);
+         if (worldSet != null && worldSet.contains(player.getUniqueId())) return true;
+      }
+      Set<UUID> globalSet = this.punished.get("_global_");
+      return globalSet != null && globalSet.contains(player.getUniqueId());
+   }
+
+   // ========================== Getters ==========================
+
+   public Settings settings() { return this.settings; }
+   public IntegrationManager getIntegrationManager() { return this.integrationManager; }
+   public PunishmentTracker getPunishmentTracker() { return this.punishmentTracker; }
+   public GraduatedPunisher getGraduatedPunisher() { return this.graduatedPunisher; }
+   public DynamicThresholdManager getDynamicThresholdManager() { return this.dynamicThresholdManager; }
+   public DetectionLogger getDetectionLogger() { return this.detectionLogger; }
+   public OneBotNotifier getOneBotNotifier() { return this.oneBotNotifier; }
+   public StatsTracker getStatsTracker() { return this.statsTracker; }
+   public AdminGUI getAdminGUI() { return this.adminGUI; }
+
+   // ========================== Helpers ==========================
+
+   private void logAsciiArt() {
+      this.getLogger().info("\n" +
+            "   █████╗ ███╗   ██╗████████╗██╗██╗     ██╗████████╗███████╗███╗   ███╗ █████╗ ████████╗██╗ █████╗   \n" +
+            "  ██╔══██╗████╗  ██║╚══██╔══╝██║██║     ██║╚══██╔══╝██╔════╝████╗ ████║██╔══██╗╚══██╔══╝██║██╔══██╗  \n" +
+            "  ███████║██╔██╗ ██║   ██║   ██║██║     ██║   ██║   █████╗  ██╔████╔██║███████║   ██║   ██║███████║  \n" +
+            "  ██╔══██║██║╚██╗██║   ██║   ██║██║     ██║   ██║   ██╔══╝  ██║╚██╔╝██║██╔══██║   ██║   ██║██╔══██║  \n" +
+            "  ██║  ██║██║ ╚████║   ██║   ██║███████╗██║   ██║   ███████╗██║ ╚═╝ ██║██║  ██║   ██║   ██║██║  ██║  \n" +
+            "  ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚══════╝╚═╝   ╚═╝   ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝  \n");
+      this.getLogger().info("AntiLitematica v" + this.getDescription().getVersion() + " enabled | Author: ALingqing_");
+   }
+
+   private void saveBundledLangFiles() {
       File langDir = new File(this.getDataFolder(), "lang");
       if (!langDir.exists()) langDir.mkdirs();
       String[] bundledLangs = {"messages.yml", "messages_zh_CN.yml", "messages_en_US.yml", "messages_zh_TW.yml"};
@@ -72,262 +236,12 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
             File target = new File(langDir, name);
             if (!target.exists()) {
                try (java.io.InputStream in = this.getResource(resourcePath)) {
-                  if (in != null) {
-                     java.nio.file.Files.copy(in, target.toPath());
-                  }
+                  if (in != null) java.nio.file.Files.copy(in, target.toPath());
                } catch (java.io.IOException e) {
                   this.getLogger().warning("Failed to save " + name + ": " + e.getMessage());
                }
             }
          }
       }
-      this.getServer().getPluginManager().registerEvents(new PunishStateListener(this), this);
-      PluginCommand cmd = this.getCommand("antilitematica");
-      if (cmd != null) {
-         cmd.setExecutor(new AntiLitematicaCommand(this));
-      }
-
-      this.dynamicThresholdManager = new DynamicThresholdManager(this);
-      this.reloadSettings();
-
-      // PlaceholderAPI
-      if (this.getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
-         new AntiLitematicaExpansion(this).register();
-      }
-
-      // bStats metrics
-      if (this.getConfig().getBoolean("bstats.enabled", true)) {
-         int pluginId = 31012;
-         Metrics metrics = new Metrics(this, pluginId);
-         metrics.addCustomChart(new SimplePie("detection_action", () -> this.settings.detection().action().name()));
-      }
-
-      // ---- Detection Logger ----
-      boolean logEnabled = this.getConfig().getBoolean("detection_log.enabled", false);
-      String logFile = this.getConfig().getString("detection_log.file", "detections.log");
-      this.detectionLogger = new DetectionLogger(this, logEnabled, logFile);
-
-      // ---- Stats Tracker (pure in-memory) ----
-      boolean statsEnabled = this.getConfig().getBoolean("stats.enabled", true);
-      this.statsTracker = new StatsTracker(statsEnabled);
-
-      // ---- OneBot (QQ Bot) notifier ----
-      if (this.settings.onebot() != null && this.settings.onebot().enabled()) {
-         Settings.OneBot ob = this.settings.onebot();
-         this.oneBotNotifier = new OneBotNotifier(this, ob.httpUrl(), ob.accessToken(), ob.groupId());
-         this.getLogger().info("OneBot notifier enabled: " + ob.httpUrl());
-      }
-
-      // ---- Admin GUI ----
-      this.adminGUI = new AdminGUI(this);
-      this.getServer().getPluginManager().registerEvents(this.adminGUI, this);
-
-      // ---- Register API ----
-      AntiLitematicaAPIImpl api = new AntiLitematicaAPIImpl(this);
-      AntiLitematicaAPIImpl.INSTANCE = api;
-      this.getServer().getServicesManager().register(
-            top.chenray.antilitematica.api.AntiLitematicaAPI.class,
-            api, this,
-            org.bukkit.plugin.ServicePriority.Normal);
-      this.getLogger().info("API registered: " + api.getClass().getName());
-
-   }
-
-   public void onDisable() {
-      if (this.modChannelDetector != null) {
-         this.modChannelDetector.shutdown();
-      }
-
-      if (this.placementGuard != null) {
-         this.placementGuard.shutdown();
-      }
-
-      if (this.commandGuard != null) {
-         this.commandGuard.shutdown();
-      }
-
-      if (this.protocolLibBridge != null) {
-         this.protocolLibBridge.shutdown();
-      }
-
-      if (this.integrationManager != null) {
-         this.integrationManager.unload();
-      }
-
-      if (this.punishmentTracker != null) {
-         this.punishmentTracker.shutdown();
-      }
-
-      if (this.detectionLogger != null) {
-         this.detectionLogger.close();
-      }
-
-      if (this.statsTracker != null) {
-         this.statsTracker.shutdown();
-      }
-
-      this.punished.clear();
-   }
-
-   /**
-    * Clear the punished set for a specific world (e.g. when a world unloads).
-    */
-   public void clearPunishedWorld(String worldName) {
-      if (worldName != null) {
-         this.punished.remove(worldName.toLowerCase());
-      }
-   }
-
-   public Settings settings() {
-      return this.settings;
-   }
-
-   public void reloadSettings() {
-      this.reloadConfig();
-      this.settings = Settings.from(this, this.getConfig());
-      if (this.modChannelDetector != null) {
-         this.modChannelDetector.shutdown();
-      }
-
-      if (this.placementGuard != null) {
-         this.placementGuard.shutdown();
-      }
-
-      if (this.commandGuard != null) {
-         this.commandGuard.shutdown();
-      }
-
-      if (this.protocolLibBridge != null) {
-         this.protocolLibBridge.shutdown();
-      }
-
-      if (this.integrationManager != null) {
-         this.integrationManager.unload();
-      }
-
-      if (this.punishmentTracker != null) {
-         this.punishmentTracker.shutdown();
-      }
-
-      this.punished.clear();
-      if (!this.settings.enabled()) {
-         this.getLogger().info("Disabled by config.");
-      } else {
-         this.integrationManager = new IntegrationManager(this);
-         this.integrationManager.load(this.settings);
-         this.protocolLibBridge = new ProtocolLibBridge(this, this.settings);
-         this.protocolLibBridge.start();
-         this.modChannelDetector = new ModChannelDetector(this, this.settings);
-         this.modChannelDetector.start();
-         this.placementGuard = new PlacementGuard(this, this.settings);
-         this.placementGuard.start();
-         this.commandGuard = new CommandGuard(this, this.settings);
-         this.commandGuard.start();
-         if (this.settings.graduatedPunishment() != null && this.settings.graduatedPunishment().enabled()) {
-            Settings.GraduatedPunishment gp = this.settings.graduatedPunishment();
-            String storage = gp.storage();
-            if ("mysql".equals(storage)) {
-               this.punishmentTracker = new PunishmentTracker(this, storage, gp.windowMinutes(),
-                     gp.mysqlHost(), gp.mysqlPort(), gp.mysqlDatabase(),
-                     gp.mysqlUser(), gp.mysqlPassword());
-            } else {
-               this.punishmentTracker = new PunishmentTracker(this, storage, gp.windowMinutes());
-            }
-            this.graduatedPunisher = new GraduatedPunisher(this, this.settings, this.punishmentTracker);
-         }
-      }
-
-   }
-
-   /**
-    * Mark a player as punished in a specific world.
-    * @return true if the player was not already punished in this world
-    */
-   public boolean markPunished(UUID uuid) {
-      return markPunished(uuid, null);
-   }
-
-   public boolean markPunished(UUID uuid, String worldName) {
-      String world = worldName != null ? worldName.toLowerCase() : "_global_";
-      Set<UUID> worldSet = this.punished.computeIfAbsent(world, k -> ConcurrentHashMap.newKeySet());
-      return worldSet.add(uuid);
-   }
-
-   public boolean markPunished(Player player) {
-      return markPunished(player.getUniqueId(), player.getWorld().getName());
-   }
-
-   /**
-    * Unmark a player as punished in a specific world.
-    */
-   public void unmarkPunished(UUID uuid) {
-      unmarkPunished(uuid, null);
-   }
-
-   public void unmarkPunished(UUID uuid, String worldName) {
-      String world = worldName != null ? worldName.toLowerCase() : "_global_";
-      Set<UUID> worldSet = this.punished.get(world);
-      if (worldSet != null) {
-         worldSet.remove(uuid);
-      }
-   }
-
-   /**
-    * Check if a player is punished in any world, or in a specific world.
-    */
-   public boolean isPunished(UUID uuid) {
-      return isPunished(uuid, null);
-   }
-
-   public boolean isPunished(UUID uuid, String worldName) {
-      if (worldName != null) {
-         String world = worldName.toLowerCase();
-         Set<UUID> worldSet = this.punished.get(world);
-         if (worldSet != null && worldSet.contains(uuid)) return true;
-         // Also check global
-         Set<UUID> globalSet = this.punished.get("_global_");
-         return globalSet != null && globalSet.contains(uuid);
-      }
-      // Check all worlds
-      for (Set<UUID> worldSet : this.punished.values()) {
-         if (worldSet.contains(uuid)) return true;
-      }
-      return false;
-   }
-
-   public boolean isPunished(Player player) {
-      return isPunished(player.getUniqueId(), player.getWorld().getName());
-   }
-
-   public IntegrationManager getIntegrationManager() {
-      return this.integrationManager;
-   }
-
-   public PunishmentTracker getPunishmentTracker() {
-      return this.punishmentTracker;
-   }
-
-   public GraduatedPunisher getGraduatedPunisher() {
-      return this.graduatedPunisher;
-   }
-
-   public DynamicThresholdManager getDynamicThresholdManager() {
-      return this.dynamicThresholdManager;
-   }
-
-   public DetectionLogger getDetectionLogger() {
-      return this.detectionLogger;
-   }
-
-   public OneBotNotifier getOneBotNotifier() {
-      return this.oneBotNotifier;
-   }
-
-   public StatsTracker getStatsTracker() {
-      return this.statsTracker;
-   }
-
-   public AdminGUI getAdminGUI() {
-      return this.adminGUI;
    }
 }

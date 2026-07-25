@@ -32,12 +32,6 @@ public final class GraduatedPunisher {
    private final Settings settings;
    private final PunishmentTracker tracker;
    private BanPluginHook hook;
-   private final Map<UUID, Integer> notifiedLevel = new ConcurrentHashMap<>();
-   /** Cached staff notify set. */
-   private final Set<UUID> staffNotify = ConcurrentHashMap.newKeySet();
-   /** Cached DiscordWebhook instance (recreated on reload). */
-   private volatile DiscordWebhook cachedWebhook;
-
    public GraduatedPunisher(AntiLitematicaPlugin plugin, Settings settings, PunishmentTracker tracker) {
       this.plugin = plugin;
       this.settings = settings;
@@ -105,18 +99,12 @@ public final class GraduatedPunisher {
       return null;
    }
 
-   public void punish(Player player, String channel, String why) {
-      // ---- Fire DetectionEvent (cancellable) ----
-      DetectionEvent detectionEvent = new DetectionEvent(player,
-            channel != null ? channel : "graduated",
-            why != null ? why : "graduated punishment",
-            DetectionEvent.DetectionType.CHANNEL);
-      Bukkit.getPluginManager().callEvent(detectionEvent);
-      if (detectionEvent.isCancelled()) {
-         this.plugin.getLogger().info("[API] Graduated detection cancelled by event for " + player.getName());
-         return;
-      }
+   /** Cached staff notify set. */
+   private final Set<UUID> staffNotify = ConcurrentHashMap.newKeySet();
+   /** Cached DiscordWebhook instance (recreated on reload). */
+   private volatile DiscordWebhook cachedWebhook;
 
+   public void punish(Player player, String channel, String why) {
       // ---- Whitelist check ----
       if (isWhitelisted(player)) {
          this.plugin.getLogger().info("[GraduatedPunish][Whitelist] " + player.getName()
@@ -224,7 +212,6 @@ public final class GraduatedPunisher {
 
    public void reload() {
       this.resolveHook();
-      this.notifiedLevel.clear();
       this.cacheDiscordWebhook();
       this.cacheStaffNotify();
    }

@@ -107,7 +107,8 @@ public final class ProtocolLibBridge {
          public void onPacketReceiving(PacketEvent event) {
             if (!globalEnabled || !detectionEnabled) return;
             Player player = event.getPlayer();
-            if (player == null || player.hasPermission("antilitematica.bypass")) return;
+            if (player == null || player.hasPermission("antilitematica.bypass")
+                  || top.chenray.antilitematica.util.BedrockPlayerDetector.isBedrockPlayer(player)) return;
             // Check per-world detection config
             if (!ProtocolLibBridge.this.settings.isDetectionEnabledForWorld(player.getWorld().getName())) return;
 
@@ -381,27 +382,7 @@ public final class ProtocolLibBridge {
    }
 
    private static String tryExtractServuxVersionString(byte[] payload) {
-      if (payload != null && payload.length >= 2) {
-         MinecraftVarInt.ReadResult rr = MinecraftVarInt.read(payload, 0);
-         if (!rr.ok()) {
-            return null;
-         } else {
-            int packetType = rr.value();
-            int nbtOffset = rr.nextIndex();
-            if (packetType != 2) {
-               return null;
-            } else {
-               String version = NbtLite.tryReadRootCompoundString(payload, nbtOffset, "version");
-               if (version == null) {
-                  return null;
-               } else {
-                  return !version.toLowerCase(Locale.ROOT).contains("litematica") ? null : version;
-               }
-            }
-         }
-      } else {
-         return null;
-      }
+      return NbtLite.tryExtractServuxVersionString(payload);
    }
 
    private static String normalize(String s) {

@@ -81,8 +81,10 @@ command_guard:
     kick_at: 5
 
 # 渐进惩罚：按违规次数逐步升级
+# 警告: 默认启用! 如果未仔细配置，玩家检测几次后会自动触发临时封禁乃至永久封禁
+#       建议首次使用先设为 false，理解各个等级后再启用
 graduated_punishment:
-  enabled: true
+  enabled: false
   window_minutes: 60
   # sqlite / mysql / memory
   storage: sqlite
@@ -184,16 +186,6 @@ stats:
 # 多世界配置（覆盖全局设置）
 # 在此按世界名设置独立开关，未列出的世界使用全局配置
 worlds:
-  # example_world:
-  #   enabled: true
-  #   detection:
-  #     enabled: true
-  #   anti_printer:
-  #     enabled: true
-  #   command_guard:
-  #     enabled: true
-  #   graduated_punishment:
-  #     enabled: true
 
 # bStats 匿名统计
 bstats:

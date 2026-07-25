@@ -14,6 +14,7 @@ import top.chenray.antilitematica.AntiLitematicaPlugin;
 import top.chenray.antilitematica.api.event.DetectionEvent;
 import top.chenray.antilitematica.api.event.PunishmentEvent;
 import top.chenray.antilitematica.config.Settings;
+import top.chenray.antilitematica.util.CommandSanitizer;
 import top.chenray.antilitematica.util.DetectionLogger;
 import top.chenray.antilitematica.util.DiscordWebhook;
 import top.chenray.antilitematica.util.Msg;
@@ -42,7 +43,7 @@ public final class Punisher {
          return;
       }
 
-      // Use graduated punishment system if enabled
+      // Use graduated punishment system if enabled (it handles its own DetectionEvent)
       if (isGraduatedEnabled(settings)) {
          plugin.getGraduatedPunisher().punish(player, channel, why);
          return;
@@ -247,7 +248,7 @@ public final class Punisher {
          SchedulerUtil.runGlobal(plugin, () -> {
             for(String cmd : commands) {
                if (cmd != null) {
-                  String c = cmd.replace("%player%", player.getName()).replace("%uuid%", uuid.toString()).replace("%reason%", reason).replace("%channel%", channel == null ? "" : channel).replace("%why%", why == null ? "" : why);
+                  String c = cmd.replace("%player%", CommandSanitizer.sanitizePlayerName(player.getName())).replace("%uuid%", uuid.toString()).replace("%reason%", reason).replace("%channel%", channel == null ? "" : channel).replace("%why%", why == null ? "" : why);
                   c = c.trim();
                   if (!c.isEmpty()) {
                      if (c.startsWith("/")) {
@@ -263,4 +264,6 @@ public final class Punisher {
       }
 
    }
+
+
 }

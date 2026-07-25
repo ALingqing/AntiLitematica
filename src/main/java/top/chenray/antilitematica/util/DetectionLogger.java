@@ -119,7 +119,7 @@ public final class DetectionLogger {
         }
     }
 
-    public void setEnabled(boolean enabled) {
+public synchronized void setEnabled(boolean enabled) {
         this.enabled = enabled;
         if (enabled && writer == null) {
             rotateLog();

@@ -313,6 +313,7 @@ public final class AdminGUI implements Listener {
 
       ItemStack item = event.getCurrentItem();
       if (item == null || !item.hasItemMeta()) return;
+      if (isBorderItem(item)) return; // Ignore border/decoration clicks
 
       switch (holder.page) {
          case "main" -> handleMainClick(player, event.getSlot(), item);
@@ -320,6 +321,11 @@ public final class AdminGUI implements Listener {
          case "worlds" -> handleWorldsClick(player, event.getSlot(), item);
          case "whitelist" -> handleWhitelistClick(player, event.getSlot(), item);
       }
+   }
+
+   /** Check if an item is a border/decoration item and should be unclickable. */
+   private static boolean isBorderItem(ItemStack item) {
+      return item.getType() == Material.GRAY_STAINED_GLASS_PANE;
    }
 
    private void handleMainClick(Player player, int slot, ItemStack item) {
@@ -355,13 +361,14 @@ public final class AdminGUI implements Listener {
          openMain(player);
       } else if (slot == 45 && holder.pageNum > 1) {
          openPlayers(player, holder.pageNum - 1);
-      } else if (slot == 53) {
+      } else if (slot == 53 && holder.pageNum > 0) {
          openPlayers(player, holder.pageNum + 1);
       } else if (slot >= 9 && slot < 45) {
-         // Click on a player head - show details
          ItemStack item = player.getOpenInventory().getItem(slot);
-         if (item != null && item.hasItemMeta()) {
-            String displayName = ChatColor.stripColor(item.getItemMeta().getDisplayName());
+         // Only PLAYER_HEAD items are actual player entries
+         if (item == null || item.getType() != Material.PLAYER_HEAD || !item.hasItemMeta()) return;
+         String displayName = ChatColor.stripColor(item.getItemMeta().getDisplayName());
+         if (displayName != null && !displayName.isEmpty()) {
             showPlayerDetail(player, displayName);
          }
       }
@@ -370,12 +377,15 @@ public final class AdminGUI implements Listener {
    private void handleWorldsClick(Player player, int slot, ItemStack item) {
       if (slot == 49) {
          openMain(player);
-      } else if (slot >= 9 && slot < 45) {
-         // Toggle detection for the clicked world
+         return;
+      }
+      // Only GRASS_BLOCK items are actual world entries
+      if (item.getType() != Material.GRASS_BLOCK) return;
+      if (slot >= 9 && slot < 45) {
          String displayName = ChatColor.stripColor(item.getItemMeta().getDisplayName());
-         if (displayName != null && !displayName.isEmpty()) {
+         if (displayName != null && !displayName.isEmpty() && Bukkit.getWorld(displayName) != null) {
             toggleWorldDetection(player, displayName);
-            openWorlds(player); // Refresh
+            openWorlds(player);
          }
       }
    }
@@ -387,16 +397,15 @@ public final class AdminGUI implements Listener {
          toggleFeature(player, "wl_toggle");
          openWhitelist(player);
       } else if (slot >= 18 && slot < 45) {
-         // Remove from whitelist
+         // Only PLAYER_HEAD items are actual whitelist entries
+         if (item.getType() != Material.PLAYER_HEAD) return;
          String name = ChatColor.stripColor(item.getItemMeta().getDisplayName());
-         if (name != null && !name.isEmpty()) {
+         if (name != null && !name.isEmpty() && plugin.settings().whitelist() != null) {
             Settings.Whitelist wl = plugin.settings().whitelist();
-            if (wl != null) {
-               var players = new java.util.LinkedHashSet<>(wl.players());
-               if (players.remove(name.toLowerCase(Locale.ROOT))) {
-                  saveWhitelistConfig(players);
-                  player.sendMessage(PREFIX + ChatColor.GREEN + name + " 已从白名单移除!");
-               }
+            var players = new java.util.LinkedHashSet<>(wl.players());
+            if (players.remove(name.toLowerCase(Locale.ROOT))) {
+               saveWhitelistConfig(players);
+               player.sendMessage(PREFIX + ChatColor.GREEN + name + " 已从白名单移除!");
             }
             openWhitelist(player);
          }
@@ -405,7 +414,7 @@ public final class AdminGUI implements Listener {
 
    // ======================== Actions ========================
 
-   private void toggleFeature(Player player, String feature) {
+   private synchronized void toggleFeature(Player player, String feature) {
       java.io.File configFile = new java.io.File(plugin.getDataFolder(), "config.yml");
       org.bukkit.configuration.file.YamlConfiguration cfg =
             org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(configFile);

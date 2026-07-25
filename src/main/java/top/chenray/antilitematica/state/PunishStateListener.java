@@ -15,13 +15,13 @@ public final class PunishStateListener implements Listener {
 
    @EventHandler
    public void onQuit(PlayerQuitEvent event) {
-      // Unmark from all worlds on quit
+      // Clear punished state from ALL worlds on quit (uses unmarkPunished(UUID) which iterates all)
       this.plugin.unmarkPunished(event.getPlayer().getUniqueId());
    }
 
    @EventHandler
    public void onWorldChange(PlayerChangedWorldEvent event) {
-      // Unmark from the previous world when player changes worlds
+      // Clear punished state only for the world the player left
       this.plugin.unmarkPunished(event.getPlayer().getUniqueId(),
             event.getFrom().getName());
    }

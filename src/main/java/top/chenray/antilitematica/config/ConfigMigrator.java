@@ -81,10 +81,6 @@ public final class ConfigMigrator {
             try {
                 cfg.save(configFile);
                 logger.info("Config migrated to version " + CURRENT_VERSION + ".");
-                // Reload the default config in case keys were added to the jar default
-                if (!new File(plugin.getDataFolder(), "config.yml").exists()) {
-                    plugin.saveDefaultConfig();
-                }
             } catch (IOException e) {
                 logger.warning("Failed to save migrated config: " + e.getMessage());
             }

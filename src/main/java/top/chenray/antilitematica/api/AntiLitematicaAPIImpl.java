@@ -234,11 +234,7 @@ public final class AntiLitematicaAPIImpl implements AntiLitematicaAPI {
         Settings settings = plugin.settings();
         if (settings == null || !settings.enabled()) return;
 
-        // Fire detection event
-        DetectionEvent event = new DetectionEvent(player, channel, reason, DetectionEvent.DetectionType.CHANNEL);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return;
-
+        // Punisher.punishDetection fires its own DetectionEvent, so we don't fire one here
         Punisher.punishDetection(plugin, settings, player, channel, reason + " [API-triggered]");
     }
 
@@ -247,10 +243,7 @@ public final class AntiLitematicaAPIImpl implements AntiLitematicaAPI {
         Settings settings = plugin.settings();
         if (settings == null || !settings.enabled()) return;
 
-        DetectionEvent event = new DetectionEvent(player, "printer", reason, DetectionEvent.DetectionType.PRINTER);
-        Bukkit.getPluginManager().callEvent(event);
-        if (event.isCancelled()) return;
-
+        // Punisher.punishDetection fires its own DetectionEvent, so we don't fire one here
         Punisher.punishDetection(plugin, settings, player, "printer", reason + " [API-triggered]");
     }
 

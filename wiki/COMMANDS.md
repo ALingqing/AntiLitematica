@@ -16,6 +16,9 @@ All commands use the base `/antilitematica` or its alias `/al`.
 | `/al whitelist list` | List all whitelisted players | antilitematica.admin |
 | `/al whitelist add <player>` | Add a player to the whitelist | antilitematica.admin |
 | `/al whitelist remove <player>` | Remove a player from the whitelist | antilitematica.admin |
+| `/al world list` | List configured worlds | antilitematica.admin |
+| `/al world <world>` | Show world config status | antilitematica.admin |
+| `/al gui` | `/al menu`, `/al panel` | Open admin GUI panel | antilitematica.admin |
 
 ### Command Details
 
@@ -48,6 +51,7 @@ Manage the violation whitelist. See Configuration for details.
 | antilitematica.admin | OP | Access to all /al commands |
 | antilitematica.bypass | OP | Bypass all detection checks entirely |
 | antilitematica.notify | OP | Receive staff alert messages |
+| antilitematica.gui | OP | Open GUI panel |
 
 ### Notes
 
@@ -88,5 +92,6 @@ All commands can also be executed from the server console:
 /al history aqing
 /al whitelist list
 /al whitelist add trusted_player
-/al build
+/al world list
+/al gui
 ```

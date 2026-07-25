@@ -8,7 +8,7 @@ public final class TokenBucket {
 
    private TokenBucket(double refillPerSecond, double capacity) {
       this.refillPerMillis = refillPerSecond / (double)1000.0F;
-      this.capacity = Math.max((double)1.0F, capacity);
+      this.capacity = Math.max(1.0D, capacity);
       this.tokens = this.capacity;
       this.lastRefillMs = System.currentTimeMillis();
    }

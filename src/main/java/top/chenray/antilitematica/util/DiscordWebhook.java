@@ -23,6 +23,8 @@ public final class DiscordWebhook {
    private final boolean useProxy;
    private final String proxyHost;
    private final int proxyPort;
+   private final String proxyUsername;
+   private final String proxyPassword;
 
    public DiscordWebhook(Plugin plugin, String webhookUrl, String username, String avatarUrl,
                          String embedTitle, int embedColor, String footerText,
@@ -37,6 +39,8 @@ public final class DiscordWebhook {
       this.useProxy = proxyHost != null && !proxyHost.isEmpty() && proxyPort > 0;
       this.proxyHost = proxyHost;
       this.proxyPort = proxyPort;
+      this.proxyUsername = proxyUsername;
+      this.proxyPassword = proxyPassword;
    }
 
    /**
@@ -173,7 +177,16 @@ public final class DiscordWebhook {
    private HttpURLConnection openConnection(URL url) throws IOException {
       if (useProxy) {
          Proxy proxy = new Proxy(Proxy.Type.HTTP, new InetSocketAddress(proxyHost, proxyPort));
-         return (HttpURLConnection) url.openConnection(proxy);
+         HttpURLConnection conn = (HttpURLConnection) url.openConnection(proxy);
+         // Apply proxy authentication
+         if (proxyUsername != null && !proxyUsername.isEmpty()
+               && proxyPassword != null && !proxyPassword.isEmpty()) {
+            String auth = proxyUsername + ":" + proxyPassword;
+            String encoded = java.util.Base64.getEncoder().encodeToString(
+                  auth.getBytes(StandardCharsets.UTF_8));
+            conn.setRequestProperty("Proxy-Authorization", "Basic " + encoded);
+         }
+         return conn;
       }
       return (HttpURLConnection) url.openConnection();
    }

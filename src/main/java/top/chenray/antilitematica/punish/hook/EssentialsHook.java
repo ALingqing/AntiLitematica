@@ -6,7 +6,7 @@ import org.bukkit.entity.Player;
 /**
  * EssentialsX fallback hook using reflection.
  */
-public final class EssentialsHook implements BanPluginHook {
+public final class EssentialsHook extends AbstractBanHook {
    private boolean available = false;
 
    public EssentialsHook() {
@@ -24,25 +24,18 @@ public final class EssentialsHook implements BanPluginHook {
    }
 
    @Override
-   public void warn(Player player, String reason) {
-      if (player.isOnline()) {
-         player.sendMessage(reason);
-      }
-   }
-
-   @Override
    public void kick(Player player, String reason) {
-      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ekick " + player.getName() + " " + reason);
+      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "ekick " + sanitizeName(player.getName()) + " " + sanitize(reason));
    }
 
    @Override
    public void tempBan(Player player, String reason, long durationSeconds) {
       long minutes = Math.max(1, durationSeconds / 60);
-      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "etempban " + player.getName() + " " + minutes + "m " + reason);
+      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "etempban " + sanitizeName(player.getName()) + " " + minutes + "m " + sanitize(reason));
    }
 
    @Override
    public void ban(Player player, String reason) {
-      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "eban " + player.getName() + " " + reason);
+      Bukkit.dispatchCommand(Bukkit.getConsoleSender(), "eban " + sanitizeName(player.getName()) + " " + sanitize(reason));
    }
 }

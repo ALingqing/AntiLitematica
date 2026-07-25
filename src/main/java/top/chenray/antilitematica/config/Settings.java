@@ -14,7 +14,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-public record Settings(boolean enabled, String lang, boolean autoLocale, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, WorldWhitelist worldWhitelist, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, OneBot onebot, Map<String, WorldSettings> worlds) {
+public record Settings(boolean enabled, String lang, boolean autoLocale, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, WorldWhitelist worldWhitelist, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, OneBot onebot, DynamicThreshold dynamicThreshold, Map<String, WorldSettings> worlds) {
 
    /**
     * Get effective settings for a specific world.
@@ -142,9 +142,14 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
 
       // ---- Violation Whitelist ----
       ConfigurationSection wl = section(cfg, "whitelist");
+      String wlMode = wl.getString("mode", "LOG_ONLY");
+      if (!"LOG_ONLY".equalsIgnoreCase(wlMode) && !"NORMAL".equalsIgnoreCase(wlMode)) {
+         plugin.getLogger().warning("Invalid whitelist.mode: '" + wlMode + "'. Expected LOG_ONLY or NORMAL. Falling back to LOG_ONLY.");
+         wlMode = "LOG_ONLY";
+      }
       Whitelist whitelist = new Whitelist(
             wl.getBoolean("enabled", false),
-            wl.getString("mode", "LOG_ONLY"),
+            wlMode,
             normalizedSet(wl.getStringList("players"))
       );
 
@@ -201,6 +206,22 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
 
       boolean autoLocale = cfg.getBoolean("auto_locale", true);
 
+      // ---- Dynamic Threshold ----
+      ConfigurationSection dt = section(cfg, "dynamic_threshold");
+      ConfigurationSection dtTps = section(dt, "tps");
+      ConfigurationSection dtPlayers = section(dt, "players");
+      ConfigurationSection dtMul = section(dt, "multiplier");
+      DynamicThreshold dynamicThreshold = new DynamicThreshold(
+            dt.getBoolean("enabled", false),
+            dt.getLong("check_interval_seconds", 30L),
+            dtTps.getDouble("high", 19.5),
+            dtTps.getDouble("low", 16.0),
+            dtPlayers.getInt("high", 50),
+            dtPlayers.getInt("low", 5),
+            dtMul.getDouble("min", 1.0),
+            dtMul.getDouble("max", 2.0)
+      );
+
       // ---- Per-World Settings (多世界兼容) ----
       Map<String, WorldSettings> worlds = new HashMap<>();
       ConfigurationSection worldsSec = cfg.getConfigurationSection("worlds");
@@ -219,7 +240,7 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
          }
       }
 
-      return new Settings(enabled, lang, autoLocale, messages, detection, antiPrinter, commandGuard, worldWhitelist, graduatedPunishment, integration, discord, whitelist, onebot, worlds);
+      return new Settings(enabled, lang, autoLocale, messages, detection, antiPrinter, commandGuard, worldWhitelist, graduatedPunishment, integration, discord, whitelist, onebot, dynamicThreshold, worlds);
    }
 
    private static ConfigurationSection section(ConfigurationSection parent, String path) {
@@ -400,6 +421,10 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
       public boolean isLogOnly() {
          return "LOG_ONLY".equalsIgnoreCase(mode);
       }
+
+      public boolean isValid() {
+         return mode == null || "LOG_ONLY".equalsIgnoreCase(mode) || "NORMAL".equalsIgnoreCase(mode);
+      }
    }
 
    /**
@@ -426,6 +451,21 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
     * Per-world settings overrides for multi-world compatibility.
     * Each field is nullable — null means "use global setting".
     */
+   /**
+    * Dynamic threshold configuration.
+    */
+   public static record DynamicThreshold(
+      boolean enabled,
+      long checkIntervalSeconds,
+      double tpsHigh,
+      double tpsLow,
+      int playersHigh,
+      int playersLow,
+      double minMultiplier,
+      double maxMultiplier
+   ) {
+   }
+
    public static record WorldSettings(
       Boolean enabled,
       Boolean detectionEnabled,

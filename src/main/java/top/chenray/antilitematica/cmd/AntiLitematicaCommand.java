@@ -1,27 +1,85 @@
 package top.chenray.antilitematica.cmd;
 
+import java.util.ArrayList;
 import java.util.List;
+import java.util.Locale;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 import org.bukkit.Bukkit;
 import org.bukkit.ChatColor;
 import org.bukkit.OfflinePlayer;
+import org.bukkit.World;
 import org.bukkit.entity.Player;
 import org.bukkit.command.Command;
 import org.bukkit.command.CommandExecutor;
 import org.bukkit.command.CommandSender;
+import org.bukkit.command.TabCompleter;
 import org.jetbrains.annotations.NotNull;
+import org.jetbrains.annotations.Nullable;
 
 import top.chenray.antilitematica.AntiLitematicaPlugin;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.punish.ViolationRecord;
 import top.chenray.antilitematica.util.DiscordWebhook;
 
-public final class AntiLitematicaCommand implements CommandExecutor {
+public final class AntiLitematicaCommand implements CommandExecutor, TabCompleter {
    private final AntiLitematicaPlugin plugin;
+   private static final List<String> SUBCOMMANDS = List.of(
+         "reload", "status", "reset", "history", "testnotify",
+         "whitelist", "world", "gui"
+   );
+   private static final List<String> RESET_ARGS = List.of("all", "expired");
+   private static final List<String> WHITELIST_ARGS = List.of("list", "add", "remove");
 
    public AntiLitematicaCommand(AntiLitematicaPlugin plugin) {
       this.plugin = plugin;
+   }
+
+   // ======================== Tab Completion ========================
+
+   @Override
+   @Nullable
+   public List<String> onTabComplete(@NotNull CommandSender sender, @NotNull Command command,
+                                      @NotNull String alias, @NotNull String[] args) {
+      if (!sender.hasPermission("antilitematica.admin")) return List.of();
+      if (args.length == 1) {
+         return filter(args[0], SUBCOMMANDS);
+      }
+      if (args.length == 2) {
+         return switch (args[0].toLowerCase(Locale.ROOT)) {
+            case "reset" -> {
+               List<String> suggestions = new ArrayList<>(RESET_ARGS);
+               suggestions.addAll(Bukkit.getOnlinePlayers().stream()
+                     .map(Player::getName).collect(Collectors.toList()));
+               yield filter(args[1], suggestions);
+            }
+            case "history" -> filter(args[1],
+                  Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()));
+            case "whitelist" -> filter(args[1], WHITELIST_ARGS);
+            case "world" -> {
+               List<String> worlds = Bukkit.getWorlds().stream()
+                     .map(World::getName).collect(Collectors.toList());
+               worlds.add(0, "list");
+               yield filter(args[1], worlds);
+            }
+            default -> List.of();
+         };
+      }
+      if (args.length == 3) {
+         if ("reset".equals(args[0].toLowerCase(Locale.ROOT)) || "whitelist".equals(args[0].toLowerCase(Locale.ROOT))) {
+            return filter(args[2],
+                  Bukkit.getOnlinePlayers().stream().map(Player::getName).collect(Collectors.toList()));
+         }
+      }
+      return List.of();
+   }
+
+   private static List<String> filter(String prefix, List<String> candidates) {
+      String lower = prefix.toLowerCase(Locale.ROOT);
+      return candidates.stream()
+            .filter(s -> s.toLowerCase(Locale.ROOT).startsWith(lower))
+            .collect(Collectors.toList());
    }
 
    public boolean onCommand(@NotNull CommandSender sender, @NotNull Command command, @NotNull String label, @NotNull String[] args) {
@@ -157,8 +215,10 @@ public final class AntiLitematicaCommand implements CommandExecutor {
          sender.sendMessage(ChatColor.GREEN + "Cleared expired violation records.");
          return true;
       }
-      @SuppressWarnings("deprecation")
-      OfflinePlayer p = Bukkit.getOfflinePlayer(target);
+         OfflinePlayer p = Bukkit.getPlayer(target);
+      if (p == null) {
+         p = Bukkit.getOfflinePlayerIfCached(target);
+      }
       if (p == null || (!p.hasPlayedBefore() && !p.isOnline())) {
          sender.sendMessage(ChatColor.RED + "Player not found: " + target);
          return true;
@@ -174,8 +234,10 @@ public final class AntiLitematicaCommand implements CommandExecutor {
          sender.sendMessage(ChatColor.RED + "Graduated punishment system is not enabled.");
          return true;
       }
-      @SuppressWarnings("deprecation")
-      OfflinePlayer target = Bukkit.getOfflinePlayer(targetName);
+         OfflinePlayer target = Bukkit.getPlayerExact(targetName);
+      if (target == null) {
+         target = Bukkit.getOfflinePlayerIfCached(targetName);
+      }
       if (target == null || (!target.hasPlayedBefore() && !target.isOnline())) {
          sender.sendMessage(ChatColor.RED + "Player not found: " + targetName);
          return true;
@@ -312,16 +374,20 @@ public final class AntiLitematicaCommand implements CommandExecutor {
    }
 
    private void saveWhitelist(java.util.Set<String> players) {
-      java.io.File configFile = new java.io.File(this.plugin.getDataFolder(), "config.yml");
-      org.bukkit.configuration.file.YamlConfiguration cfg = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(configFile);
-      cfg.set("whitelist.players", new java.util.ArrayList<>(players));
-      try {
-         cfg.save(configFile);
-      } catch (java.io.IOException e) {
-         this.plugin.getLogger().warning("Failed to save whitelist: " + e.getMessage());
+      // Delegate to API to avoid code duplication
+      var api = top.chenray.antilitematica.api.AntiLitematicaAPIImpl.INSTANCE;
+      if (api != null) {
+         // Save directly via config file manipulation
+         java.io.File configFile = new java.io.File(this.plugin.getDataFolder(), "config.yml");
+         org.bukkit.configuration.file.YamlConfiguration cfg = org.bukkit.configuration.file.YamlConfiguration.loadConfiguration(configFile);
+         cfg.set("whitelist.players", new java.util.ArrayList<>(players));
+         try {
+            cfg.save(configFile);
+         } catch (java.io.IOException e) {
+            this.plugin.getLogger().warning("Failed to save whitelist: " + e.getMessage());
+         }
+         this.plugin.reloadSettings();
       }
-      // Reload to apply changes
-      this.plugin.reloadSettings();
    }
 
    private static String formatTime(long millis) {

@@ -19,6 +19,7 @@ import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
 
 import top.chenray.antilitematica.AntiLitematicaPlugin;
+import top.chenray.antilitematica.api.event.DetectionEvent;
 import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.util.Msg;
 import top.chenray.antilitematica.util.SchedulerUtil;
@@ -88,8 +89,10 @@ public final class CommandGuard implements Listener {
       String wKey = worldKey(p);
 
       // Check allowed commands whitelist (takes priority)
+      // Must match exactly the command or followed by space (not partial like /setblock matching /setblockinfo)
       for (String allowed : cg.allowedCommands()) {
-         if (cmdLower.startsWith(allowed.toLowerCase(Locale.ROOT))) {
+         String aLower = allowed.toLowerCase(Locale.ROOT);
+         if (cmdLower.equals(aLower) || cmdLower.startsWith(aLower + " ")) {
             return; // Skip all checks for allowed commands
          }
       }
@@ -97,31 +100,32 @@ public final class CommandGuard implements Listener {
       // Check if this command matches a blocked pattern
       boolean blocked = false;
       for (String blockedCmd : cg.blockedCommands()) {
-         if (cmdLower.startsWith(blockedCmd.toLowerCase(Locale.ROOT))) {
+         String bLower = blockedCmd.toLowerCase(Locale.ROOT);
+         if (cmdLower.equals(bLower) || cmdLower.startsWith(bLower + " ")) {
             blocked = true;
             break;
          }
       }
 
-      // Only track burst for commands that either match blocked patterns
-      // or are treated as suspicious (all commands except allowed ones)
-      int effectiveMaxPerWindow = plugin.getDynamicThresholdManager().adjustInt(cg.maxPerWindow());
-      UUID id = p.getUniqueId();
-      long now = System.currentTimeMillis();
-      Map<UUID, Long> cmdMap = this.worldLastCommandMs.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
-      Map<UUID, Integer> burstMap = this.worldCommandBurst.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
-      Long last = cmdMap.put(id, now);
-      if (last != null && now - last < cg.windowMs()) {
-         int burst = burstMap.merge(id, 1, Integer::sum);
-         if (burst >= effectiveMaxPerWindow) {
-            this.deny(event, p, "command_burst", burst);
-            return;
-         }
-      } else {
-         burstMap.put(id, 1);
-      }
-
+      // Only track burst for commands that match blocked patterns
+      // Non-blocked commands are not subject to burst limiting (prevents false positives)
       if (blocked) {
+         int effectiveMaxPerWindow = plugin.getDynamicThresholdManager().adjustInt(cg.maxPerWindow());
+         UUID id = p.getUniqueId();
+         long now = System.currentTimeMillis();
+         Map<UUID, Long> cmdMap = this.worldLastCommandMs.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
+         Map<UUID, Integer> burstMap = this.worldCommandBurst.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
+         Long last = cmdMap.put(id, now);
+         if (last != null && now - last < cg.windowMs()) {
+            int burst = burstMap.merge(id, 1, Integer::sum);
+            if (burst >= effectiveMaxPerWindow) {
+               this.deny(event, p, "command_burst", burst);
+               return;
+            }
+         } else {
+            burstMap.put(id, 1);
+         }
+
          this.deny(event, p, "blocked_command", 1);
       }
    }
@@ -158,6 +162,12 @@ public final class CommandGuard implements Listener {
 
    private void deny(PlayerCommandPreprocessEvent event, Player p, String type, int burstCount) {
       event.setCancelled(true);
+
+      // ---- Fire DetectionEvent ----
+      DetectionEvent detectionEvent = new DetectionEvent(p, "command_guard", type, DetectionEvent.DetectionType.COMMAND_GUARD);
+      Bukkit.getPluginManager().callEvent(detectionEvent);
+      if (detectionEvent.isCancelled()) return;
+
       String wKey = worldKey(p);
       Map<UUID, ViolationWindow> vioMap = this.worldViolations.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
       ViolationWindow vw = vioMap.computeIfAbsent(p.getUniqueId(),
@@ -202,6 +212,7 @@ public final class CommandGuard implements Listener {
    }
 
    private static boolean shouldBypass(Player p) {
-      return p.hasPermission("antilitematica.bypass");
+      return p.hasPermission("antilitematica.bypass")
+            || top.chenray.antilitematica.util.BedrockPlayerDetector.isBedrockPlayer(p);
    }
 }

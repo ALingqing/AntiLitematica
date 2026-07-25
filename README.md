@@ -12,7 +12,7 @@
 
 AntiLitematica is a server-side plugin that detects and prevents the use of Litematica, Schematica, and their Printer features on your Minecraft server. No client-side mod installation required.
 
-Built with ProtocolLib deep inspection, a graduated punishment system, and Geyser (Bedrock) compatibility, AntiLitematica provides robust protection while minimizing false positives.
+Built with ProtocolLib deep inspection and a graduated punishment system, AntiLitematica provides robust protection while minimizing false positives.
 
 ---
 
@@ -24,7 +24,9 @@ Built with ProtocolLib deep inspection, a graduated punishment system, and Geyse
 - **Command Guard** -- Blocks rapid command bursts and /setblock spam, with configurable allowlist
 - **World Whitelist** -- Skip detection entirely in configured worlds (build/creative servers)
 - **Graduated Punishment** -- Escalating penalties: Warn, TempBan, Ban. Supports LiteBans, AdvancedBan, EssentialsX
-- **Geyser Compatible** -- Bedrock players auto-exempted from all checks
+- **Multi-World Support** -- Per-world configuration, world-aware violation tracking
+- **Admin GUI** -- In-game inventory management panel (/al gui)
+- **Geyser Compatible** -- Bedrock players auto-exempted from all checks (Floodgate API + prefix)
 - **Discord Webhook** -- Rich embed alerts on detection or punishment
 - **OneBot 11 (QQ Bot)** -- Send notifications to QQ groups via LLBot/go-cqhttp
 - **Anti-Cheat Integration** -- Optional integration with GrimAC, Vulcan, or Matrix
@@ -63,7 +65,7 @@ Full installation guide: [wiki/INSTALL.md](wiki/INSTALL.md)
 4. **Command Guard** -- Detects rapid command bursts used by schematic quick-paste. Allowlist exempts normal commands
 5. **Punishment Execution** -- Warnings, kicks, temp bans, or permanent bans. Ban hooks: LiteBans, AdvancedBan, EssentialsX, Bukkit native
 
-All checks respect antilitematica.bypass and auto-exempt Geyser Bedrock players.
+All checks respect antilitematica.bypass.
 
 ---
 
@@ -77,6 +79,8 @@ All checks respect antilitematica.bypass and auto-exempt Geyser Bedrock players.
 | `/al history <player> [page]` | | View violation history |
 | `/al testnotify` | | Test Discord/OneBot notifications |
 | `/al whitelist list\|add\|remove` | | Manage whitelist |
+| `/al world list\|<world>` | | View per-world config |
+| `/al gui` | `/al menu` | Open admin GUI panel |
 
 Full reference: [wiki/COMMANDS.md](wiki/COMMANDS.md)
 
@@ -89,6 +93,7 @@ Full reference: [wiki/COMMANDS.md](wiki/COMMANDS.md)
 | antilitematica.admin | OP | All /al commands |
 | antilitematica.bypass | OP | Bypass all checks |
 | antilitematica.notify | OP | Receive alerts |
+| antilitematica.gui | OP | Open GUI panel |
 
 ---
 

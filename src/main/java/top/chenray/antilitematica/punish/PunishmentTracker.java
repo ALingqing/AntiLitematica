@@ -97,26 +97,60 @@ public final class PunishmentTracker {
       File dbFile = new File(dataFolder, "violations.db");
       this.connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
       try (Statement stmt = this.connection.createStatement()) {
-         stmt.execute("CREATE TABLE IF NOT EXISTS violations ("
-               + "id TEXT PRIMARY KEY,"
-               + "uuid TEXT NOT NULL,"
-               + "player_name TEXT,"
-               + "count INTEGER DEFAULT 0,"
-               + "first_violation INTEGER,"
-               + "last_violation INTEGER,"
-               + "total_violations INTEGER DEFAULT 0,"
-               + "world TEXT DEFAULT NULL"
-               + ")");
-         // Migration: add world column if missing (for backward compatibility)
+         // Check if the table already exists with old schema using PRAGMA table_info
+         boolean needsMigration = false;
+         boolean tableExists = false;
+         try (var rs = stmt.executeQuery("SELECT COUNT(*) FROM sqlite_master WHERE type='table' AND name='violations'")) {
+            if (rs.next() && rs.getInt(1) > 0) tableExists = true;
+         }
+         if (tableExists) {
+            boolean hasIdColumn = false;
+            try (var rs = stmt.executeQuery("PRAGMA table_info(violations)")) {
+               while (rs.next()) {
+                  if ("id".equals(rs.getString("name"))) {
+                     hasIdColumn = true;
+                     break;
+                  }
+               }
+            }
+            needsMigration = !hasIdColumn;
+         }
+
+         if (needsMigration) {
+            // Old schema: migrate to new schema with compound keys
+            stmt.execute("CREATE TABLE IF NOT EXISTS violations_new ("
+                  + "id TEXT PRIMARY KEY,"
+                  + "uuid TEXT NOT NULL,"
+                  + "player_name TEXT,"
+                  + "count INTEGER DEFAULT 0,"
+                  + "first_violation INTEGER,"
+                  + "last_violation INTEGER,"
+                  + "total_violations INTEGER DEFAULT 0,"
+                  + "world TEXT DEFAULT NULL"
+                  + ")");
+            stmt.execute("INSERT OR IGNORE INTO violations_new (id, uuid, player_name, count, first_violation, last_violation, total_violations, world) "
+                  + "SELECT uuid, uuid, player_name, count, first_violation, last_violation, total_violations, NULL FROM violations");
+            stmt.execute("DROP TABLE violations");
+            stmt.execute("ALTER TABLE violations_new RENAME TO violations");
+            plugin.getLogger().info("Migrated violations database to new schema.");
+         } else {
+            stmt.execute("CREATE TABLE IF NOT EXISTS violations ("
+                  + "id TEXT PRIMARY KEY,"
+                  + "uuid TEXT NOT NULL,"
+                  + "player_name TEXT,"
+                  + "count INTEGER DEFAULT 0,"
+                  + "first_violation INTEGER,"
+                  + "last_violation INTEGER,"
+                  + "total_violations INTEGER DEFAULT 0,"
+                  + "world TEXT DEFAULT NULL"
+                  + ")");
+         }
+
+         // Migration: add world column if missing (safe for old schema)
          try {
             stmt.execute("ALTER TABLE violations ADD COLUMN world TEXT DEFAULT NULL");
          } catch (SQLException ignored) {
-            // Column already exists — ignore
-         }
-         try {
-            stmt.execute("ALTER TABLE violations RENAME COLUMN uuid TO id_old");
-         } catch (SQLException ignored) {
-            // Already migrated or different schema — ignore
+            // Column already exists
          }
       }
       plugin.getLogger().info("Violation storage: SQLite (" + dbFile.getAbsolutePath() + ")");
@@ -144,11 +178,11 @@ public final class PunishmentTracker {
                + "total_violations INT DEFAULT 0,"
                + "world VARCHAR(64) DEFAULT NULL"
                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
-         // Migration: add world column if missing
+         // Migration: add world column if missing (safe on MySQL)
          try {
-            stmt.execute("ALTER TABLE violations ADD COLUMN world VARCHAR(64) DEFAULT NULL");
+            stmt.execute("ALTER TABLE violations ADD COLUMN IF NOT EXISTS world VARCHAR(64) DEFAULT NULL");
          } catch (SQLException ignored) {
-            // Column already exists
+            // Column may already exist or IF NOT EXISTS not supported
          }
       }
       plugin.getLogger().info("Violation storage: MySQL (" + mysqlHost + ":" + mysqlPort + "/" + mysqlDatabase + ")");
@@ -289,17 +323,15 @@ public final class PunishmentTracker {
    public void clearExpiredRecords() {
       long windowMs = this.windowMinutes * 60L * 1000L;
       long now = System.currentTimeMillis();
-      List<UUID> toRemove = new ArrayList<>();
+      int count = 0;
       for (ViolationRecord record : getAllRecords()) {
          if (now - record.lastViolation() > windowMs) {
-            toRemove.add(record.uuid());
+            resetPlayer(record.uuid());
+            count++;
          }
       }
-      for (UUID uuid : toRemove) {
-         resetPlayer(uuid);
-      }
-      if (!toRemove.isEmpty()) {
-         this.plugin.getLogger().info("Cleared " + toRemove.size() + " expired violation records.");
+      if (count > 0) {
+         this.plugin.getLogger().info("Cleared " + count + " expired violation records.");
       }
    }
 
@@ -359,7 +391,16 @@ public final class PunishmentTracker {
    }
 
    private void cleanupOldRecords() {
-      long cutoff = System.currentTimeMillis() - (30L * 24L * 60L * 60L * 1000L);
+      // Use retention days from config, default 30 days
+      long retentionDays = 30L;
+      try {
+         java.io.File configFile = new java.io.File(this.plugin.getDataFolder(), "config.yml");
+         if (configFile.exists()) {
+            retentionDays = org.bukkit.configuration.file.YamlConfiguration
+                  .loadConfiguration(configFile).getLong("stats.record_retention_days", 30L);
+         }
+      } catch (Exception ignored) { }
+      long cutoff = System.currentTimeMillis() - (retentionDays * 24L * 60L * 60L * 1000L);
       if (hasDatabase()) {
          try (PreparedStatement ps = this.connection.prepareStatement(
                "DELETE FROM violations WHERE last_violation < ?")) {

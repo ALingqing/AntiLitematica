@@ -256,7 +256,8 @@ public final class ModChannelDetector implements Listener, PluginMessageListener
       }
       // Check per-world detection config
       if (!this.settings.isDetectionEnabledForWorld(player.getWorld().getName())) return;
-      if (player.hasPermission("antilitematica.bypass")) return;
+      if (player.hasPermission("antilitematica.bypass")
+            || top.chenray.antilitematica.util.BedrockPlayerDetector.isBedrockPlayer(player)) return;
 
       // Detection cooldown: prevent spam from repeated channel messages
       UUID uuid = player.getUniqueId();
@@ -296,26 +297,6 @@ public final class ModChannelDetector implements Listener, PluginMessageListener
    }
 
    private static String tryExtractServuxVersionString(byte[] payload) {
-      if (payload != null && payload.length >= 2) {
-         MinecraftVarInt.ReadResult rr = MinecraftVarInt.read(payload, 0);
-         if (!rr.ok()) {
-            return null;
-         } else {
-            int packetType = rr.value();
-            int nbtOffset = rr.nextIndex();
-            if (packetType != 2) {
-               return null;
-            } else {
-               String version = NbtLite.tryReadRootCompoundString(payload, nbtOffset, "version");
-               if (version == null) {
-                  return null;
-               } else {
-                  return !version.toLowerCase().contains("litematica") ? null : version;
-               }
-            }
-         }
-      } else {
-         return null;
-      }
+      return NbtLite.tryExtractServuxVersionString(payload);
    }
 }
