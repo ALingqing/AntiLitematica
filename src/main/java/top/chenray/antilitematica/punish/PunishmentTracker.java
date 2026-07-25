@@ -29,7 +29,7 @@ public final class PunishmentTracker {
    private final long windowMinutes;
    private Connection connection;
    private ScheduledTask cleanupTask;
-   private final Map<UUID, ViolationRecord> memoryCache = new ConcurrentHashMap<>();
+   private final Map<String, ViolationRecord> memoryCache = new ConcurrentHashMap<>();
 
    // MySQL config
    private final String mysqlHost;
