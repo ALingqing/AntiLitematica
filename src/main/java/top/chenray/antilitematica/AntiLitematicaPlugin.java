@@ -63,8 +63,10 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    public void onEnable() {
       logAsciiArt();
       this.saveDefaultConfig();
-      boolean isFreshInstall = new ConfigMigrator(this).migrate();
-      if (isFreshInstall) {
+      boolean migrated = new ConfigMigrator(this).migrate();
+      // 新安装时 migrate() 返回 false，此时 config.yml 刚被 saveDefaultConfig 创建
+      // 我们通过检查 config_version 是否为当前版本来判断是否是新安装
+      if (!migrated && this.getConfig().getInt("config_version", 0) < ConfigMigrator.currentVersion()) {
          new top.chenray.antilitematica.config.ConfigWizard(this).run();
       }
       saveBundledLangFiles();
@@ -81,9 +83,10 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       this.adminGUI = new AdminGUI(this);
       this.getServer().getPluginManager().registerEvents(this.adminGUI, this);
       this.detectionBus = new DetectionBus();
-      this.masaCompat = new MasaCompat(this, this.settings);
 
       this.reloadSettings();
+
+      this.masaCompat = new MasaCompat(this, this.settings);
 
       // PlaceholderAPI
       if (this.getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
