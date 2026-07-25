@@ -58,6 +58,15 @@ public final class AntiLitematicaCommand implements CommandExecutor {
             return handleWhitelist(sender, args);
          case "world":
             return handleWorld(sender, args);
+         case "gui":
+         case "menu":
+         case "panel":
+            if (sender instanceof Player p) {
+               this.plugin.getAdminGUI().openMain(p);
+               return true;
+            }
+            sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+            return true;
          default:
             return false;
       }

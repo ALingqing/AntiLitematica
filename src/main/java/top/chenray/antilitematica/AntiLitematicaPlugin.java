@@ -19,6 +19,7 @@ import top.chenray.antilitematica.config.Settings;
 import top.chenray.antilitematica.detection.ModChannelDetector;
 import top.chenray.antilitematica.guard.CommandGuard;
 import top.chenray.antilitematica.guard.PlacementGuard;
+import top.chenray.antilitematica.gui.AdminGUI;
 import top.chenray.antilitematica.integration.IntegrationManager;
 import top.chenray.antilitematica.protocol.ProtocolLibBridge;
 import top.chenray.antilitematica.punish.GraduatedPunisher;
@@ -46,6 +47,7 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private DetectionLogger detectionLogger;
    private OneBotNotifier oneBotNotifier;
    private StatsTracker statsTracker;
+   private AdminGUI adminGUI;
 
    public void onEnable() {
       // Fancy startup ASCII art
@@ -115,6 +117,10 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          this.oneBotNotifier = new OneBotNotifier(this, ob.httpUrl(), ob.accessToken(), ob.groupId());
          this.getLogger().info("OneBot notifier enabled: " + ob.httpUrl());
       }
+
+      // ---- Admin GUI ----
+      this.adminGUI = new AdminGUI(this);
+      this.getServer().getPluginManager().registerEvents(this.adminGUI, this);
 
       // ---- Register API ----
       AntiLitematicaAPIImpl api = new AntiLitematicaAPIImpl(this);
@@ -319,5 +325,9 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
    public StatsTracker getStatsTracker() {
       return this.statsTracker;
+   }
+
+   public AdminGUI getAdminGUI() {
+      return this.adminGUI;
    }
 }

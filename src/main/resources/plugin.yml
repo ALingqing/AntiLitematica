@@ -10,7 +10,7 @@ softdepend: [PlaceholderAPI]
 commands:
   antilitematica:
     description: AntiLitematica admin command
-    usage: /antilitematica <reload | status | reset | history | testnotify | whitelist>
+    usage: /antilitematica <reload | status | reset | history | testnotify | whitelist | world | gui>
     aliases: [al]
     permission: antilitematica.admin
 
@@ -23,4 +23,7 @@ permissions:
     default: op
   antilitematica.notify:
     description: Receive AntiLitematica alerts
+    default: op
+  antilitematica.gui:
+    description: Allows using the GUI panel
     default: op
