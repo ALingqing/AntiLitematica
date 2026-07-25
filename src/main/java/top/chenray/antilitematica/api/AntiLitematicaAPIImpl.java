@@ -92,7 +92,7 @@ public final class AntiLitematicaAPIImpl implements AntiLitematicaAPI {
 
     @Override
     public boolean markPlayerPunished(@NotNull UUID uuid) {
-        return plugin.markPunished(uuid);
+        return plugin.markPunished(uuid, null);
     }
 
     @Override
@@ -104,7 +104,10 @@ public final class AntiLitematicaAPIImpl implements AntiLitematicaAPI {
 
     @Override
     public boolean isPlayerPunished(@NotNull UUID uuid, @Nullable String worldName) {
-        return plugin.isPunished(uuid, worldName);
+        if (worldName == null) return plugin.isPunished(uuid);
+        String world = worldName.toLowerCase();
+        java.util.Set<java.util.UUID> worldSet = plugin.getPunishedWorldSet(world);
+        return worldSet != null && worldSet.contains(uuid);
     }
 
     @Override

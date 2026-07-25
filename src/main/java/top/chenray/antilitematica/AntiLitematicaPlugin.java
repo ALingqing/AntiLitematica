@@ -101,6 +101,13 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       if (worldName != null) this.punished.remove(worldName.toLowerCase());
    }
 
+   /**
+    * Get the set of punished UUIDs for a specific world (exposed for API).
+    */
+   public Set<UUID> getPunishedWorldSet(String worldName) {
+      return worldName != null ? this.punished.get(worldName.toLowerCase()) : null;
+   }
+
    public void reloadSettings() {
       shutdownAll();
       this.reloadConfig();
