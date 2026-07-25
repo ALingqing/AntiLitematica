@@ -89,7 +89,7 @@ public final class CrossServerSync implements PluginMessageListener {
          out.writeShort(msgBytes.toByteArray().length);
          out.write(msgBytes.toByteArray());
 
-         sendPluginMessage(out.toByteArray());
+         sendPluginMessage(bout.toByteArray());
       } catch (Exception e) {
          plugin.getLogger().warning("Cross-server sync: failed to broadcast violation: " + e.getMessage());
       }
@@ -118,7 +118,7 @@ public final class CrossServerSync implements PluginMessageListener {
          out.writeShort(msgBytes.toByteArray().length);
          out.write(msgBytes.toByteArray());
 
-         sendPluginMessage(out.toByteArray());
+         sendPluginMessage(bout.toByteArray());
       } catch (Exception e) {
          plugin.getLogger().warning("Cross-server sync: failed to broadcast punishment: " + e.getMessage());
       }
