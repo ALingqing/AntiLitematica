@@ -96,6 +96,7 @@ public final class ModChannelDetector implements Listener, PluginMessageListener
          }
       }
       this.lastDetectionTime.clear();
+      // MasaCompat cleanup happens via PlayerQuitEvent if registered, or on shutdown
    }
 
    /**
@@ -109,6 +110,9 @@ public final class ModChannelDetector implements Listener, PluginMessageListener
    public void onRegisterChannel(PlayerRegisterChannelEvent event) {
       if (!this.settings.detection().enabled()) return;
       String ch = normalize(event.getChannel());
+
+      // Feed into MasaCompat for mod detection
+      this.plugin.getMasaCompat().detectChannel(event.getPlayer(), ch);
 
       // Check configured channels first
       if (this.settings.detection().channels().contains(ch)) {
@@ -144,6 +148,9 @@ public final class ModChannelDetector implements Listener, PluginMessageListener
    public void onPluginMessageReceived(String channel, Player player, byte[] message) {
       if (!this.settings.detection().enabled()) return;
       String ch = normalize(channel);
+
+      // Feed into MasaCompat for mod detection (tracks Tweakeroo, MiniHUD, etc.)
+      this.plugin.getMasaCompat().detectChannel(player, ch);
 
       // Check if channel matches config or known channels
       boolean isConfigured = this.settings.detection().channels().contains(ch);
@@ -273,7 +280,10 @@ public final class ModChannelDetector implements Listener, PluginMessageListener
       String enrichedWhy = modName + " " + why;
 
       if (this.plugin.markPunished(player)) {
-         Punisher.punishDetection(this.plugin, this.settings, player, channel, enrichedWhy);
+         this.plugin.getDetectionBus().emit(
+               new top.chenray.antilitematica.detection.DetectionBus.DetectionContext(
+                     player, channel, enrichedWhy,
+                     top.chenray.antilitematica.api.event.DetectionEvent.DetectionType.CHANNEL));
       }
    }
 

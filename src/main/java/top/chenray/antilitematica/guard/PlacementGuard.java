@@ -106,8 +106,11 @@ public final class PlacementGuard implements Listener {
          return;
       }
       if (this.enforceRaytrace && !this.rayTraceMatches(p, event.getBlockPlaced(), event.getBlockAgainst())) {
-         this.deny(event, p, "raytrace");
-         return;
+         // Tweakeroo flexi placement modifies hit vectors — skip raytrace in compat mode
+         if (!this.plugin.getMasaCompat().shouldSkipRaytrace(p)) {
+            this.deny(event, p, "raytrace");
+            return;
+         }
       }
       if (this.detectConsecutiveSameType && this.checkConsecutiveSameType(p, event.getBlockPlaced())) {
          this.deny(event, p, "consecutive_same");
@@ -136,8 +139,10 @@ public final class PlacementGuard implements Listener {
          return;
       }
       if (this.enforceRaytrace && !this.rayTraceMatches(p, event.getBlockPlaced(), event.getBlockAgainst())) {
-         this.deny(event, p, "raytrace");
-         return;
+         if (!this.plugin.getMasaCompat().shouldSkipRaytrace(p)) {
+            this.deny(event, p, "raytrace");
+            return;
+         }
       }
       if (this.detectConsecutiveSameType && this.checkConsecutiveSameType(p, event.getBlockPlaced())) {
          this.deny(event, p, "consecutive_same");

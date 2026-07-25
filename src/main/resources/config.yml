@@ -151,6 +151,13 @@ discord:
   notify_on_detection: true
   notify_on_punish: true
 
+# 兼容模式：为 Tweakeroo 等合法辅助模组放宽检测
+# tweakeroo_mode: true 时，enforce_raytrace 跳过柔性放置检查
+#                        easy_place 信号阈值放宽 (EP_MIN_CONSECUTIVE 从 3 提到 8)
+#                        consecutive_same_type 比例从 80% 放宽到 95%
+compatibility:
+  tweakeroo_mode: false
+
 # QQ 机器人通知
 onebot:
   enabled: false

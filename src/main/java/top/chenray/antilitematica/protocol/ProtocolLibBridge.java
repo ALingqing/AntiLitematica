@@ -55,7 +55,7 @@ public final class ProtocolLibBridge {
    // Consecutive EasyPlace tracking: require multiple hits to reduce false positives
    private final Map<UUID, EasyPlaceCounter> epTracking = new ConcurrentHashMap<>();
    private static final long EP_WINDOW_MS = 10000L; // 10 second window
-   private static final int EP_MIN_CONSECUTIVE = 3; // require 3+ EasyPlace hits
+   private int epMinConsecutive = 3; // default 3; raised to 8 in Tweakeroo compat mode
 
    // Known Litematica channels for registration monitoring (same as ModChannelDetector)
    private static final java.util.Set<String> KNOWN_LITEMATICA_CHANNELS = java.util.Set.of(
@@ -91,6 +91,7 @@ public final class ProtocolLibBridge {
       this.nbtCancel = nbt == null || nbt.cancelPacket();
       this.blockServux = this.settings.detection().blockServux();
       this.detectionChannels = this.settings.detection().channels();
+      this.epMinConsecutive = this.plugin.getMasaCompat().getEasyPlaceThreshold();
 
       List<PacketType> types = new ArrayList<>();
       types.add(Client.CUSTOM_PAYLOAD);
@@ -166,7 +167,7 @@ public final class ProtocolLibBridge {
       }
       counter.count++;
       counter.lastHitTime = now;
-      return counter.count >= EP_MIN_CONSECUTIVE;
+      return counter.count >= this.epMinConsecutive;
    }
 
    /** Simple counter for EasyPlace tracking. */
@@ -177,9 +178,11 @@ public final class ProtocolLibBridge {
 
    private void punishOnce(Player player, String channel, String why) {
       if (this.plugin.markPunished(player)) {
-         Punisher.punishDetection(this.plugin, this.settings, player, channel, why);
+         this.plugin.getDetectionBus().emit(
+               new top.chenray.antilitematica.detection.DetectionBus.DetectionContext(
+                     player, channel, why,
+                     top.chenray.antilitematica.api.event.DetectionEvent.DetectionType.SIGNAL));
       }
-
    }
 
    private void handleCustomPayload(PacketEvent event, Player player, PacketContainer packet) {

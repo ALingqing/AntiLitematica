@@ -48,6 +48,35 @@
 ### Geyser Compatibility
 - **Actually implemented** — Bedrock players auto-exempted from all checks via Floodgate API (reflection) with name prefix fallback.
 
+### DetectionBus Integration
+- **PunisherHandler** — Wraps `Punisher` as a `DetectionHandler` registered on the bus.
+- **ModChannelDetector** & **ProtocolLibBridge** — Now use `bus.emit()` instead of calling `Punisher` directly.
+- External plugins can register custom handlers via `DetectionBus.register()`.
+
+### Auto Config Wizard
+- **ConfigWizard** — First-run server profile detection: Survival / Creative / Minigame.
+- Sends recommendations to console on fresh install.
+- Command: `/al wizard` for manual invocation.
+
+### New Detection Strategies
+- **NbtQueryStormDetector** — Detects Litematica schematic loading via NBT query burst analysis (15+ queries/sec threshold).
+- **OperationModeDetector** — Analyzes block placement spatial patterns for grid-aligned sequences (>80% axis-aligned = operation mode).
+
+### Cross-Server Sync
+- **CrossServerSync** — BungeeCord/Velocity plugin messaging for violation record broadcasting.
+- Channels: `al:violation` (sync violation counts), `al:punish` (network-wide bans).
+- Auto-detects proxy environment; zero-config setup.
+
+### MasaMods Compatibility (推客入/Tweakeroo)
+- **MasaCompat** — New `compat/MasaCompat.java` centralizes all Masa family mod detection & compatibility.
+- Automatically detects Litematica, Tweakeroo, MiniHUD, ItemScroller via plugin channels.
+- **`compatibility.tweakeroo_mode: true`** in `config.yml` enables three relaxations:
+  - `enforce_raytrace` skipped for Tweakeroo users (flexi placement modifies hit vectors)
+  - `easy_place` threshold raised from 3→8 consecutive hits (fewer false positives)
+  - `consecutive_same_type` ratio raised from 80%→95% (builders can use same blocks)
+- Integration points: `ModChannelDetector` (channel detection), `PlacementGuard` (raytrace skip), `ProtocolLibBridge` (easy place threshold).
+- ConfigMigrator v5: auto-adds `compatibility.tweakeroo_mode: false` to existing configs.
+
 ### Documentation
 - **`.gitignore`** — Added excluding `target/`, IDE files, OS files, logs.
 - **`README.md`** — Geyser support restored (now actually implemented); commands/permissions tables updated.

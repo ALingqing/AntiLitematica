@@ -27,7 +27,7 @@ public final class AntiLitematicaCommand implements CommandExecutor, TabComplete
    private final AntiLitematicaPlugin plugin;
    private static final List<String> SUBCOMMANDS = List.of(
          "reload", "status", "reset", "history", "testnotify",
-         "whitelist", "world", "gui"
+         "whitelist", "world", "gui", "wizard"
    );
    private static final List<String> RESET_ARGS = List.of("all", "expired");
    private static final List<String> WHITELIST_ARGS = List.of("list", "add", "remove");
@@ -125,6 +125,15 @@ public final class AntiLitematicaCommand implements CommandExecutor, TabComplete
                return true;
             }
             sender.sendMessage(ChatColor.RED + "Only players can use this command.");
+            return true;
+         case "wizard":
+            var profile = new top.chenray.antilitematica.config.ConfigWizard(this.plugin).detectProfile();
+            sender.sendMessage(ChatColor.GOLD + "=== AntiLitematica Config Wizard ===");
+            sender.sendMessage(ChatColor.GRAY + "Detected server profile: " + ChatColor.WHITE + profile.name);
+            sender.sendMessage(ChatColor.GRAY + "Recommendations:");
+            for (String rec : profile.recommendations) {
+               sender.sendMessage(ChatColor.GRAY + "  • " + ChatColor.WHITE + rec);
+            }
             return true;
          default:
             return false;

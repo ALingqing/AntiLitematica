@@ -14,7 +14,7 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-public record Settings(boolean enabled, String lang, boolean autoLocale, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, WorldWhitelist worldWhitelist, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, OneBot onebot, DynamicThreshold dynamicThreshold, Map<String, WorldSettings> worlds) {
+public record Settings(boolean enabled, String lang, boolean autoLocale, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, WorldWhitelist worldWhitelist, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, OneBot onebot, DynamicThreshold dynamicThreshold, Compatibility compatibility, Map<String, WorldSettings> worlds) {
 
    /**
     * Get effective settings for a specific world.
@@ -206,6 +206,12 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
 
       boolean autoLocale = cfg.getBoolean("auto_locale", true);
 
+      // ---- Compatibility ----
+      ConfigurationSection comp = section(cfg, "compatibility");
+      Compatibility compatibility = new Compatibility(
+            comp.getBoolean("tweakeroo_mode", false)
+      );
+
       // ---- Dynamic Threshold ----
       ConfigurationSection dt = section(cfg, "dynamic_threshold");
       ConfigurationSection dtTps = section(dt, "tps");
@@ -240,7 +246,7 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
          }
       }
 
-      return new Settings(enabled, lang, autoLocale, messages, detection, antiPrinter, commandGuard, worldWhitelist, graduatedPunishment, integration, discord, whitelist, onebot, dynamicThreshold, worlds);
+      return new Settings(enabled, lang, autoLocale, messages, detection, antiPrinter, commandGuard, worldWhitelist, graduatedPunishment, integration, discord, whitelist, onebot, dynamicThreshold, compatibility, worlds);
    }
 
    private static ConfigurationSection section(ConfigurationSection parent, String path) {
@@ -454,6 +460,12 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
    /**
     * Dynamic threshold configuration.
     */
+   /**
+    * Compatibility settings for client-side mods like Tweakeroo.
+    */
+   public static record Compatibility(boolean tweakerooMode) {
+   }
+
    public static record DynamicThreshold(
       boolean enabled,
       long checkIntervalSeconds,

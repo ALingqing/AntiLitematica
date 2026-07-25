@@ -60,7 +60,7 @@ public final class Punisher {
    }
 
    /** Execute the legacy single-action (LOG/KICK/BAN/COMMANDS) fallback. */
-   private static void executeLegacyAction(AntiLitematicaPlugin plugin, Settings settings,
+   public static void executeLegacyAction(AntiLitematicaPlugin plugin, Settings settings,
                                            Player player, String channel, String why) {
       Settings.Detection det = settings.detection();
       if (det == null || !det.enabled()) return;
@@ -234,7 +234,7 @@ public final class Punisher {
     * Check if a player is on the violation whitelist.
     * If whitelist is enabled and player is listed, only log the detection.
     */
-   private static boolean isWhitelisted(Settings settings, Player player) {
+   public static boolean isWhitelisted(Settings settings, Player player) {
       Settings.Whitelist wl = settings.whitelist();
       if (wl == null || !wl.enabled()) return false;
       if (!wl.isLogOnly()) return false;

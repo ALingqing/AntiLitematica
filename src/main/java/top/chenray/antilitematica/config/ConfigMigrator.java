@@ -16,7 +16,7 @@ import org.bukkit.plugin.Plugin;
  */
 public final class ConfigMigrator {
 
-    private static final int CURRENT_VERSION = 3;
+    private static final int CURRENT_VERSION = 5;
 
     private final Plugin plugin;
     private final Logger logger;
@@ -71,6 +71,16 @@ public final class ConfigMigrator {
             changed |= addDefault(cfg, "stats.enabled", true);
             changed |= addDefault(cfg, "stats.record_retention_days", 30);
             changed |= addDefault(cfg, "stats.stats_retention_days", 90);
+        }
+
+        if (oldVersion < 4) {
+            // v4: worlds section (multi-world)
+            changed |= addDefault(cfg, "worlds", null);
+        }
+
+        if (oldVersion < 5) {
+            // v5: compatibility section (Tweakeroo)
+            changed |= addDefault(cfg, "compatibility.tweakeroo_mode", false);
         }
 
         // Set current version

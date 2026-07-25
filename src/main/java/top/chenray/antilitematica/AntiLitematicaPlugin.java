@@ -14,9 +14,13 @@ import org.bstats.bukkit.Metrics;
 import org.bstats.charts.SimplePie;
 
 import top.chenray.antilitematica.cmd.AntiLitematicaCommand;
+import top.chenray.antilitematica.compat.MasaCompat;
 import top.chenray.antilitematica.config.ConfigMigrator;
 import top.chenray.antilitematica.config.Settings;
+import top.chenray.antilitematica.detection.DetectionBus;
 import top.chenray.antilitematica.detection.ModChannelDetector;
+import top.chenray.antilitematica.detection.NbtQueryStormDetector;
+import top.chenray.antilitematica.detection.OperationModeDetector;
 import top.chenray.antilitematica.guard.CommandGuard;
 import top.chenray.antilitematica.guard.PlacementGuard;
 import top.chenray.antilitematica.gui.AdminGUI;
@@ -26,6 +30,7 @@ import top.chenray.antilitematica.punish.GraduatedPunisher;
 import top.chenray.antilitematica.punish.PunishmentTracker;
 import top.chenray.antilitematica.placeholder.AntiLitematicaExpansion;
 import top.chenray.antilitematica.state.PunishStateListener;
+import top.chenray.antilitematica.sync.CrossServerSync;
 import top.chenray.antilitematica.threshold.DynamicThresholdManager;
 import top.chenray.antilitematica.api.AntiLitematicaAPIImpl;
 import top.chenray.antilitematica.util.DetectionLogger;
@@ -38,6 +43,9 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private PlacementGuard placementGuard;
    private CommandGuard commandGuard;
    private ProtocolLibBridge protocolLibBridge;
+   private NbtQueryStormDetector nbtQueryStormDetector;
+   private OperationModeDetector operationModeDetector;
+   private CrossServerSync crossServerSync;
    private IntegrationManager integrationManager;
    private PunishmentTracker punishmentTracker;
    private GraduatedPunisher graduatedPunisher;
@@ -48,12 +56,17 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private OneBotNotifier oneBotNotifier;
    private StatsTracker statsTracker;
    private AdminGUI adminGUI;
+   private DetectionBus detectionBus;
+   private MasaCompat masaCompat;
 
    @Override
    public void onEnable() {
       logAsciiArt();
       this.saveDefaultConfig();
-      new ConfigMigrator(this).migrate();
+      boolean isFreshInstall = new ConfigMigrator(this).migrate();
+      if (isFreshInstall) {
+         new top.chenray.antilitematica.config.ConfigWizard(this).run();
+      }
       saveBundledLangFiles();
       this.getServer().getPluginManager().registerEvents(new PunishStateListener(this), this);
 
@@ -67,6 +80,8 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       this.dynamicThresholdManager = new DynamicThresholdManager(this);
       this.adminGUI = new AdminGUI(this);
       this.getServer().getPluginManager().registerEvents(this.adminGUI, this);
+      this.detectionBus = new DetectionBus();
+      this.masaCompat = new MasaCompat(this, this.settings);
 
       this.reloadSettings();
 
@@ -134,6 +149,9 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       }
 
       this.dynamicThresholdManager.reload();
+      // Register DetectionBus handlers
+      this.detectionBus.clear();
+      this.detectionBus.register(new top.chenray.antilitematica.punish.PunisherHandler(this, this.settings));
       this.integrationManager = new IntegrationManager(this);
       this.integrationManager.load(this.settings);
       this.protocolLibBridge = new ProtocolLibBridge(this, this.settings);
@@ -144,6 +162,12 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       this.placementGuard.start();
       this.commandGuard = new CommandGuard(this, this.settings);
       this.commandGuard.start();
+      this.nbtQueryStormDetector = new NbtQueryStormDetector(this, this.settings);
+      this.nbtQueryStormDetector.start();
+      this.operationModeDetector = new OperationModeDetector(this, this.settings);
+      this.operationModeDetector.start();
+      this.crossServerSync = new CrossServerSync(this);
+      this.crossServerSync.enable();
 
       if (this.settings.graduatedPunishment() != null && this.settings.graduatedPunishment().enabled()) {
          Settings.GraduatedPunishment gp = this.settings.graduatedPunishment();
@@ -164,6 +188,9 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       if (this.placementGuard != null) { this.placementGuard.shutdown(); }
       if (this.commandGuard != null) { this.commandGuard.shutdown(); }
       if (this.protocolLibBridge != null) { this.protocolLibBridge.shutdown(); }
+      if (this.nbtQueryStormDetector != null) { this.nbtQueryStormDetector.shutdown(); }
+      if (this.operationModeDetector != null) { this.operationModeDetector.shutdown(); }
+      if (this.crossServerSync != null) { this.crossServerSync.disable(); }
       if (this.integrationManager != null) { this.integrationManager.unload(); }
       if (this.punishmentTracker != null) { this.punishmentTracker.shutdown(); }
       if (this.detectionLogger != null) { this.detectionLogger.close(); }
@@ -219,6 +246,8 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    public OneBotNotifier getOneBotNotifier() { return this.oneBotNotifier; }
    public StatsTracker getStatsTracker() { return this.statsTracker; }
    public AdminGUI getAdminGUI() { return this.adminGUI; }
+   public DetectionBus getDetectionBus() { return this.detectionBus; }
+   public MasaCompat getMasaCompat() { return this.masaCompat; }
 
    // ========================== Helpers ==========================
 
