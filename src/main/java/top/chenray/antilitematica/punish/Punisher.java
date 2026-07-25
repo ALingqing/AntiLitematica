@@ -161,7 +161,9 @@ public final class Punisher {
                                      String channel, String reason, String actionName, String why) {
       DetectionLogger detLog = plugin.getDetectionLogger();
       if (detLog != null) {
-         detLog.log(player.getName(), player.getUniqueId().toString(), channel, reason, actionName, why);
+         String worldName = player.getWorld() != null ? player.getWorld().getName() : "unknown";
+         detLog.log(player.getName(), player.getUniqueId().toString(), channel, reason, actionName,
+               why + " world=" + worldName);
       }
    }
 

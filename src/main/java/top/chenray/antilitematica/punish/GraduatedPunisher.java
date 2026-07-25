@@ -128,7 +128,8 @@ public final class GraduatedPunisher {
          return;
       }
 
-      ViolationRecord record = this.tracker.recordViolation(player);
+      ViolationRecord record = this.tracker.recordViolation(player,
+            player.getWorld() != null ? player.getWorld().getName() : null);
       int level = Math.min(record.count(), gp.levels().size());
       boolean exceeded = record.count() > gp.levels().size();
 
@@ -205,8 +206,9 @@ public final class GraduatedPunisher {
       // ---- Detection Log ----
       DetectionLogger detLog = this.plugin.getDetectionLogger();
       if (detLog != null) {
+         String worldName = player.getWorld() != null ? player.getWorld().getName() : "unknown";
          detLog.log(player.getName(), player.getUniqueId().toString(), channel, reason, actionName,
-               "graduated level=" + level + " count=" + record.count());
+               "graduated level=" + level + " count=" + record.count() + " world=" + worldName);
       }
 
       // ---- Fire PunishmentEvent ----

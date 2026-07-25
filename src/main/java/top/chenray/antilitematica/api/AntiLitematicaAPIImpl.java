@@ -100,6 +100,47 @@ public final class AntiLitematicaAPIImpl implements AntiLitematicaAPI {
         plugin.unmarkPunished(uuid);
     }
 
+    // ==================== Multi-World API ====================
+
+    @Override
+    public boolean isPlayerPunished(@NotNull UUID uuid, @Nullable String worldName) {
+        return plugin.isPunished(uuid, worldName);
+    }
+
+    @Override
+    public boolean markPlayerPunished(@NotNull UUID uuid, @Nullable String worldName) {
+        return plugin.markPunished(uuid, worldName);
+    }
+
+    @Override
+    public void unmarkPlayerPunished(@NotNull UUID uuid, @Nullable String worldName) {
+        plugin.unmarkPunished(uuid, worldName);
+    }
+
+    @Override
+    public boolean isDetectionEnabledForWorld(@NotNull String worldName) {
+        Settings s = plugin.settings();
+        return s != null && s.isDetectionEnabledForWorld(worldName);
+    }
+
+    @Override
+    public boolean isAntiPrinterEnabledForWorld(@NotNull String worldName) {
+        Settings s = plugin.settings();
+        return s != null && s.isAntiPrinterEnabledForWorld(worldName);
+    }
+
+    @Override
+    public boolean isCommandGuardEnabledForWorld(@NotNull String worldName) {
+        Settings s = plugin.settings();
+        return s != null && s.isCommandGuardEnabledForWorld(worldName);
+    }
+
+    @Override
+    public boolean isGraduatedPunishmentEnabledForWorld(@NotNull String worldName) {
+        Settings s = plugin.settings();
+        return s != null && s.isGraduatedPunishmentEnabledForWorld(worldName);
+    }
+
     // ==================== Violation Records ====================
 
     @Override

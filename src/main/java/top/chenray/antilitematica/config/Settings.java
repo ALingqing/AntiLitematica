@@ -2,9 +2,11 @@ package top.chenray.antilitematica.config;
 
 import java.io.File;
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.LinkedHashSet;
 import java.util.List;
 import java.util.Locale;
+import java.util.Map;
 import java.util.Set;
 
 import org.bukkit.configuration.ConfigurationSection;
@@ -12,7 +14,54 @@ import org.bukkit.configuration.file.FileConfiguration;
 import org.bukkit.configuration.file.YamlConfiguration;
 import org.bukkit.plugin.Plugin;
 
-public record Settings(boolean enabled, String lang, boolean autoLocale, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, WorldWhitelist worldWhitelist, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, OneBot onebot) {
+public record Settings(boolean enabled, String lang, boolean autoLocale, Messages messages, Detection detection, AntiPrinter antiPrinter, CommandGuard commandGuard, WorldWhitelist worldWhitelist, GraduatedPunishment graduatedPunishment, Integration integration, Discord discord, Whitelist whitelist, OneBot onebot, Map<String, WorldSettings> worlds) {
+
+   /**
+    * Get effective settings for a specific world.
+    * Returns per-world overrides merged on top of global settings, or null if no overrides exist.
+    */
+   public WorldSettings worldSettings(String worldName) {
+      if (worldName == null || worlds == null) return null;
+      return worlds.get(worldName.toLowerCase(Locale.ROOT));
+   }
+
+   /**
+    * Check if detection is enabled for a specific world.
+    * Falls back to global detection.enabled if no per-world override.
+    */
+   public boolean isDetectionEnabledForWorld(String worldName) {
+      WorldSettings ws = worldSettings(worldName);
+      if (ws != null && ws.detectionEnabled() != null) return ws.detectionEnabled();
+      return detection() != null && detection().enabled();
+   }
+
+   /**
+    * Check if anti-printer is enabled for a specific world.
+    */
+   public boolean isAntiPrinterEnabledForWorld(String worldName) {
+      WorldSettings ws = worldSettings(worldName);
+      if (ws != null && ws.antiPrinterEnabled() != null) return ws.antiPrinterEnabled();
+      return antiPrinter() != null && antiPrinter().enabled();
+   }
+
+   /**
+    * Check if command guard is enabled for a specific world.
+    */
+   public boolean isCommandGuardEnabledForWorld(String worldName) {
+      WorldSettings ws = worldSettings(worldName);
+      if (ws != null && ws.commandGuardEnabled() != null) return ws.commandGuardEnabled();
+      return commandGuard() != null && commandGuard().enabled();
+   }
+
+   /**
+    * Check if graduated punishment is enabled for a specific world.
+    */
+   public boolean isGraduatedPunishmentEnabledForWorld(String worldName) {
+      WorldSettings ws = worldSettings(worldName);
+      if (ws != null && ws.graduatedPunishmentEnabled() != null) return ws.graduatedPunishmentEnabled();
+      return graduatedPunishment() != null && graduatedPunishment().enabled();
+   }
+
    public static Settings from(Plugin plugin, FileConfiguration cfg) {
       boolean enabled = cfg.getBoolean("enabled", true);
 
@@ -152,7 +201,25 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
 
       boolean autoLocale = cfg.getBoolean("auto_locale", true);
 
-      return new Settings(enabled, lang, autoLocale, messages, detection, antiPrinter, commandGuard, worldWhitelist, graduatedPunishment, integration, discord, whitelist, onebot);
+      // ---- Per-World Settings (多世界兼容) ----
+      Map<String, WorldSettings> worlds = new HashMap<>();
+      ConfigurationSection worldsSec = cfg.getConfigurationSection("worlds");
+      if (worldsSec != null) {
+         for (String worldName : worldsSec.getKeys(false)) {
+            ConfigurationSection ws = worldsSec.getConfigurationSection(worldName);
+            if (ws == null) continue;
+            Boolean wEnabled = ws.contains("enabled") ? ws.getBoolean("enabled") : null;
+            Boolean wDetection = ws.contains("detection.enabled") ? ws.getBoolean("detection.enabled") : null;
+            Boolean wAntiPrinter = ws.contains("anti_printer.enabled") ? ws.getBoolean("anti_printer.enabled") : null;
+            Boolean wCommandGuard = ws.contains("command_guard.enabled") ? ws.getBoolean("command_guard.enabled") : null;
+            Boolean wGraduatedPunishment = ws.contains("graduated_punishment.enabled") ? ws.getBoolean("graduated_punishment.enabled") : null;
+            worlds.put(worldName.toLowerCase(Locale.ROOT), new WorldSettings(
+                  wEnabled, wDetection, wAntiPrinter, wCommandGuard, wGraduatedPunishment
+            ));
+         }
+      }
+
+      return new Settings(enabled, lang, autoLocale, messages, detection, antiPrinter, commandGuard, worldWhitelist, graduatedPunishment, integration, discord, whitelist, onebot, worlds);
    }
 
    private static ConfigurationSection section(ConfigurationSection parent, String path) {
@@ -352,6 +419,19 @@ public record Settings(boolean enabled, String lang, boolean autoLocale, Message
       String httpUrl,        // OneBot HTTP API URL, e.g. "http://localhost:5700"
       String accessToken,    // Access token for authorization
       long groupId           // Target QQ group ID for notifications
+   ) {
+   }
+
+   /**
+    * Per-world settings overrides for multi-world compatibility.
+    * Each field is nullable — null means "use global setting".
+    */
+   public static record WorldSettings(
+      Boolean enabled,
+      Boolean detectionEnabled,
+      Boolean antiPrinterEnabled,
+      Boolean commandGuardEnabled,
+      Boolean graduatedPunishmentEnabled
    ) {
    }
 }

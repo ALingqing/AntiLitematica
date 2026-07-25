@@ -254,6 +254,8 @@ public final class ModChannelDetector implements Listener, PluginMessageListener
             && this.settings.worldWhitelist().isWorldExempt(player.getWorld().getName())) {
          return;
       }
+      // Check per-world detection config
+      if (!this.settings.isDetectionEnabledForWorld(player.getWorld().getName())) return;
       if (player.hasPermission("antilitematica.bypass")) return;
 
       // Detection cooldown: prevent spam from repeated channel messages
@@ -269,7 +271,7 @@ public final class ModChannelDetector implements Listener, PluginMessageListener
       String modName = resolveModName(channel);
       String enrichedWhy = modName + " " + why;
 
-      if (this.plugin.markPunished(uuid)) {
+      if (this.plugin.markPunished(player)) {
          Punisher.punishDetection(this.plugin, this.settings, player, channel, enrichedWhy);
       }
    }

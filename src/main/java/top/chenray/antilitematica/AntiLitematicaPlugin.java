@@ -1,11 +1,13 @@
 package top.chenray.antilitematica;
 
 import java.io.File;
+import java.util.Map;
 import java.util.Set;
 import java.util.UUID;
 import java.util.concurrent.ConcurrentHashMap;
 
 import org.bukkit.command.PluginCommand;
+import org.bukkit.entity.Player;
 import org.bukkit.plugin.java.JavaPlugin;
 
 import org.bstats.bukkit.Metrics;
@@ -38,7 +40,8 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
    private IntegrationManager integrationManager;
    private PunishmentTracker punishmentTracker;
    private GraduatedPunisher graduatedPunisher;
-   private final Set<UUID> punished = ConcurrentHashMap.newKeySet();
+   /** World-aware punished set: world name -> set of punished player UUIDs */
+   private final Map<String, Set<UUID>> punished = new ConcurrentHashMap<>();
    private DynamicThresholdManager dynamicThresholdManager;
    private DetectionLogger detectionLogger;
    private OneBotNotifier oneBotNotifier;
@@ -160,6 +163,15 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
       this.punished.clear();
    }
 
+   /**
+    * Clear the punished set for a specific world (e.g. when a world unloads).
+    */
+   public void clearPunishedWorld(String worldName) {
+      if (worldName != null) {
+         this.punished.remove(worldName.toLowerCase());
+      }
+   }
+
    public Settings settings() {
       return this.settings;
    }
@@ -221,16 +233,64 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
    }
 
+   /**
+    * Mark a player as punished in a specific world.
+    * @return true if the player was not already punished in this world
+    */
    public boolean markPunished(UUID uuid) {
-      return this.punished.add(uuid);
+      return markPunished(uuid, null);
    }
 
+   public boolean markPunished(UUID uuid, String worldName) {
+      String world = worldName != null ? worldName.toLowerCase() : "_global_";
+      Set<UUID> worldSet = this.punished.computeIfAbsent(world, k -> ConcurrentHashMap.newKeySet());
+      return worldSet.add(uuid);
+   }
+
+   public boolean markPunished(Player player) {
+      return markPunished(player.getUniqueId(), player.getWorld().getName());
+   }
+
+   /**
+    * Unmark a player as punished in a specific world.
+    */
    public void unmarkPunished(UUID uuid) {
-      this.punished.remove(uuid);
+      unmarkPunished(uuid, null);
    }
 
+   public void unmarkPunished(UUID uuid, String worldName) {
+      String world = worldName != null ? worldName.toLowerCase() : "_global_";
+      Set<UUID> worldSet = this.punished.get(world);
+      if (worldSet != null) {
+         worldSet.remove(uuid);
+      }
+   }
+
+   /**
+    * Check if a player is punished in any world, or in a specific world.
+    */
    public boolean isPunished(UUID uuid) {
-      return this.punished.contains(uuid);
+      return isPunished(uuid, null);
+   }
+
+   public boolean isPunished(UUID uuid, String worldName) {
+      if (worldName != null) {
+         String world = worldName.toLowerCase();
+         Set<UUID> worldSet = this.punished.get(world);
+         if (worldSet != null && worldSet.contains(uuid)) return true;
+         // Also check global
+         Set<UUID> globalSet = this.punished.get("_global_");
+         return globalSet != null && globalSet.contains(uuid);
+      }
+      // Check all worlds
+      for (Set<UUID> worldSet : this.punished.values()) {
+         if (worldSet.contains(uuid)) return true;
+      }
+      return false;
+   }
+
+   public boolean isPunished(Player player) {
+      return isPunished(player.getUniqueId(), player.getWorld().getName());
    }
 
    public IntegrationManager getIntegrationManager() {

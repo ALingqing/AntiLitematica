@@ -108,6 +108,8 @@ public final class ProtocolLibBridge {
             if (!globalEnabled || !detectionEnabled) return;
             Player player = event.getPlayer();
             if (player == null || player.hasPermission("antilitematica.bypass")) return;
+            // Check per-world detection config
+            if (!ProtocolLibBridge.this.settings.isDetectionEnabledForWorld(player.getWorld().getName())) return;
 
             PacketContainer packet = event.getPacket();
             if (packet.getType() == Client.CUSTOM_PAYLOAD) {
@@ -173,8 +175,7 @@ public final class ProtocolLibBridge {
    }
 
    private void punishOnce(Player player, String channel, String why) {
-      UUID uuid = player.getUniqueId();
-      if (this.plugin.markPunished(uuid)) {
+      if (this.plugin.markPunished(player)) {
          Punisher.punishDetection(this.plugin, this.settings, player, channel, why);
       }
 

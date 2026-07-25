@@ -13,6 +13,7 @@ import org.bukkit.event.EventHandler;
 import org.bukkit.event.EventPriority;
 import org.bukkit.event.HandlerList;
 import org.bukkit.event.Listener;
+import org.bukkit.event.player.PlayerChangedWorldEvent;
 import org.bukkit.event.player.PlayerCommandPreprocessEvent;
 import org.bukkit.event.player.PlayerJoinEvent;
 import org.bukkit.event.player.PlayerQuitEvent;
@@ -30,9 +31,10 @@ import top.chenray.antilitematica.util.ViolationWindow;
 public final class CommandGuard implements Listener {
    private final AntiLitematicaPlugin plugin;
    private final Settings settings;
-   private final Map<UUID, Long> lastCommandMs = new ConcurrentHashMap<>();
-   private final Map<UUID, Integer> commandBurst = new ConcurrentHashMap<>();
-   private final Map<UUID, ViolationWindow> violations = new ConcurrentHashMap<>();
+   // World-aware tracking: world name -> (player uuid -> tracker)
+   private final Map<String, Map<UUID, Long>> worldLastCommandMs = new ConcurrentHashMap<>();
+   private final Map<String, Map<UUID, Integer>> worldCommandBurst = new ConcurrentHashMap<>();
+   private final Map<String, Map<UUID, ViolationWindow>> worldViolations = new ConcurrentHashMap<>();
    /** Cached staff notify set (avoids iterating all online players). */
    private final Set<UUID> staffNotify = ConcurrentHashMap.newKeySet();
 
@@ -55,10 +57,14 @@ public final class CommandGuard implements Listener {
 
    public void shutdown() {
       HandlerList.unregisterAll(this);
-      this.lastCommandMs.clear();
-      this.commandBurst.clear();
-      this.violations.clear();
+      this.worldLastCommandMs.clear();
+      this.worldCommandBurst.clear();
+      this.worldViolations.clear();
       this.staffNotify.clear();
+   }
+
+   private static String worldKey(Player p) {
+      return p.getWorld().getName().toLowerCase(Locale.ROOT);
    }
 
    @EventHandler(
@@ -73,10 +79,13 @@ public final class CommandGuard implements Listener {
             && this.settings.worldWhitelist().isWorldExempt(p.getWorld().getName())) {
          return;
       }
+      // Check per-world command guard config
+      if (!this.settings.isCommandGuardEnabledForWorld(p.getWorld().getName())) return;
 
       Settings.CommandGuard cg = this.settings.commandGuard();
       String cmd = event.getMessage();
       String cmdLower = cmd.toLowerCase(Locale.ROOT);
+      String wKey = worldKey(p);
 
       // Check allowed commands whitelist (takes priority)
       for (String allowed : cg.allowedCommands()) {
@@ -99,15 +108,17 @@ public final class CommandGuard implements Listener {
       int effectiveMaxPerWindow = plugin.getDynamicThresholdManager().adjustInt(cg.maxPerWindow());
       UUID id = p.getUniqueId();
       long now = System.currentTimeMillis();
-      Long last = this.lastCommandMs.put(id, now);
+      Map<UUID, Long> cmdMap = this.worldLastCommandMs.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
+      Map<UUID, Integer> burstMap = this.worldCommandBurst.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
+      Long last = cmdMap.put(id, now);
       if (last != null && now - last < cg.windowMs()) {
-         int burst = this.commandBurst.merge(id, 1, Integer::sum);
+         int burst = burstMap.merge(id, 1, Integer::sum);
          if (burst >= effectiveMaxPerWindow) {
             this.deny(event, p, "command_burst", burst);
             return;
          }
       } else {
-         this.commandBurst.put(id, 1);
+         burstMap.put(id, 1);
       }
 
       if (blocked) {
@@ -126,15 +137,30 @@ public final class CommandGuard implements Listener {
    @EventHandler
    public void onQuit(PlayerQuitEvent event) {
       UUID id = event.getPlayer().getUniqueId();
-      this.lastCommandMs.remove(id);
-      this.commandBurst.remove(id);
-      this.violations.remove(id);
+      for (Map<UUID, ?> map : this.worldLastCommandMs.values()) map.remove(id);
+      for (Map<UUID, ?> map : this.worldCommandBurst.values()) map.remove(id);
+      for (Map<UUID, ?> map : this.worldViolations.values()) map.remove(id);
       this.staffNotify.remove(id);
+   }
+
+   @EventHandler
+   public void onWorldChange(PlayerChangedWorldEvent event) {
+      Player p = event.getPlayer();
+      String fromWorld = event.getFrom().getName().toLowerCase(Locale.ROOT);
+      UUID id = p.getUniqueId();
+      Map<UUID, Long> cmdMap = this.worldLastCommandMs.get(fromWorld);
+      if (cmdMap != null) cmdMap.remove(id);
+      Map<UUID, Integer> burstMap = this.worldCommandBurst.get(fromWorld);
+      if (burstMap != null) burstMap.remove(id);
+      Map<UUID, ViolationWindow> vioMap = this.worldViolations.get(fromWorld);
+      if (vioMap != null) vioMap.remove(id);
    }
 
    private void deny(PlayerCommandPreprocessEvent event, Player p, String type, int burstCount) {
       event.setCancelled(true);
-      ViolationWindow vw = this.violations.computeIfAbsent(p.getUniqueId(),
+      String wKey = worldKey(p);
+      Map<UUID, ViolationWindow> vioMap = this.worldViolations.computeIfAbsent(wKey, k -> new ConcurrentHashMap<>());
+      ViolationWindow vw = vioMap.computeIfAbsent(p.getUniqueId(),
             ignored -> new ViolationWindow(this.settings.commandGuard().violations().windowMs()));
       int n = vw.addViolation();
 

@@ -97,6 +97,49 @@ public interface AntiLitematicaAPI {
      */
     void unmarkPlayerPunished(@NotNull UUID uuid);
 
+    // ==================== Multi-World API ====================
+
+    /**
+     * Check if a player is punished in a specific world.
+     *
+     * @param uuid player UUID
+     * @param worldName world name, or null for global check
+     */
+    boolean isPlayerPunished(@NotNull UUID uuid, @Nullable String worldName);
+
+    /**
+     * Manually flag a player for punishment in a specific world.
+     *
+     * @param uuid player UUID
+     * @param worldName world name, or null for global
+     */
+    boolean markPlayerPunished(@NotNull UUID uuid, @Nullable String worldName);
+
+    /**
+     * Remove a player from the punished set in a specific world.
+     */
+    void unmarkPlayerPunished(@NotNull UUID uuid, @Nullable String worldName);
+
+    /**
+     * Check if detection is enabled for a specific world.
+     */
+    boolean isDetectionEnabledForWorld(@NotNull String worldName);
+
+    /**
+     * Check if anti-printer is enabled for a specific world.
+     */
+    boolean isAntiPrinterEnabledForWorld(@NotNull String worldName);
+
+    /**
+     * Check if command guard is enabled for a specific world.
+     */
+    boolean isCommandGuardEnabledForWorld(@NotNull String worldName);
+
+    /**
+     * Check if graduated punishment is enabled for a specific world.
+     */
+    boolean isGraduatedPunishmentEnabledForWorld(@NotNull String worldName);
+
     // ==================== Violation Records ====================
 
     /**

@@ -38,6 +38,18 @@ public final class PunishmentTracker {
    private final String mysqlUser;
    private final String mysqlPassword;
 
+   /** Compound key for world-aware records: "uuid:world" or just "uuid" for global. */
+   private static String recordKey(UUID uuid, String world) {
+      return world != null && !world.isEmpty()
+            ? uuid.toString() + ":" + world.toLowerCase(java.util.Locale.ROOT)
+            : uuid.toString();
+   }
+
+   private static String recordKeyPlayer(Player player) {
+      String world = player.getWorld() != null ? player.getWorld().getName() : null;
+      return recordKey(player.getUniqueId(), world);
+   }
+
    public PunishmentTracker(Plugin plugin, String storageType, long windowMinutes) {
       this(plugin, storageType, windowMinutes, null, 0, null, null, null);
    }
@@ -86,13 +98,26 @@ public final class PunishmentTracker {
       this.connection = DriverManager.getConnection("jdbc:sqlite:" + dbFile.getAbsolutePath());
       try (Statement stmt = this.connection.createStatement()) {
          stmt.execute("CREATE TABLE IF NOT EXISTS violations ("
-               + "uuid TEXT PRIMARY KEY,"
+               + "id TEXT PRIMARY KEY,"
+               + "uuid TEXT NOT NULL,"
                + "player_name TEXT,"
                + "count INTEGER DEFAULT 0,"
                + "first_violation INTEGER,"
                + "last_violation INTEGER,"
-               + "total_violations INTEGER DEFAULT 0"
+               + "total_violations INTEGER DEFAULT 0,"
+               + "world TEXT DEFAULT NULL"
                + ")");
+         // Migration: add world column if missing (for backward compatibility)
+         try {
+            stmt.execute("ALTER TABLE violations ADD COLUMN world TEXT DEFAULT NULL");
+         } catch (SQLException ignored) {
+            // Column already exists — ignore
+         }
+         try {
+            stmt.execute("ALTER TABLE violations RENAME COLUMN uuid TO id_old");
+         } catch (SQLException ignored) {
+            // Already migrated or different schema — ignore
+         }
       }
       plugin.getLogger().info("Violation storage: SQLite (" + dbFile.getAbsolutePath() + ")");
    }
@@ -110,27 +135,44 @@ public final class PunishmentTracker {
 
       try (Statement stmt = this.connection.createStatement()) {
          stmt.execute("CREATE TABLE IF NOT EXISTS violations ("
-               + "uuid VARCHAR(36) PRIMARY KEY,"
+               + "id VARCHAR(100) PRIMARY KEY,"
+               + "uuid VARCHAR(36) NOT NULL,"
                + "player_name VARCHAR(64),"
                + "count INT DEFAULT 0,"
                + "first_violation BIGINT,"
                + "last_violation BIGINT,"
-               + "total_violations INT DEFAULT 0"
+               + "total_violations INT DEFAULT 0,"
+               + "world VARCHAR(64) DEFAULT NULL"
                + ") ENGINE=InnoDB DEFAULT CHARSET=utf8mb4");
+         // Migration: add world column if missing
+         try {
+            stmt.execute("ALTER TABLE violations ADD COLUMN world VARCHAR(64) DEFAULT NULL");
+         } catch (SQLException ignored) {
+            // Column already exists
+         }
       }
       plugin.getLogger().info("Violation storage: MySQL (" + mysqlHost + ":" + mysqlPort + "/" + mysqlDatabase + ")");
    }
 
    /**
-    * Records a violation and returns the updated record.
+    * Records a violation for a player, world-aware.
     */
    public synchronized ViolationRecord recordViolation(Player player) {
+      return recordViolation(player, player.getWorld() != null ? player.getWorld().getName() : null);
+   }
+
+   /**
+    * Records a violation and returns the updated record.
+    * Uses a compound key (uuid:world) for per-world tracking.
+    */
+   public synchronized ViolationRecord recordViolation(Player player, String world) {
       UUID uuid = player.getUniqueId();
       long now = System.currentTimeMillis();
-      ViolationRecord record = this.loadRecord(uuid);
+      String key = recordKey(uuid, world);
+      ViolationRecord record = this.loadRecord(key, uuid);
 
       if (record == null) {
-         record = new ViolationRecord(uuid, player.getName(), 1, now, now, 1);
+         record = new ViolationRecord(uuid, player.getName(), 1, now, now, 1, world);
       } else {
          long windowMs = this.windowMinutes * 60L * 1000L;
          if (now - record.firstViolation() > windowMs) {
@@ -145,12 +187,19 @@ public final class PunishmentTracker {
          record.playerName(player.getName());
       }
 
-      this.saveRecord(record);
+      this.saveRecord(key, record);
       return record;
    }
 
    public synchronized ViolationRecord getRecord(UUID uuid) {
-      return this.loadRecord(uuid);
+      return this.loadRecord(recordKey(uuid, null), uuid);
+   }
+
+   /**
+    * Get violation record for a player in a specific world.
+    */
+   public synchronized ViolationRecord getRecord(UUID uuid, String world) {
+      return this.loadRecord(recordKey(uuid, world), uuid);
    }
 
    /**
@@ -158,7 +207,7 @@ public final class PunishmentTracker {
     */
    public synchronized List<String> getViolationDetails(UUID uuid) {
       List<String> details = new ArrayList<>();
-      ViolationRecord record = this.loadRecord(uuid);
+      ViolationRecord record = this.loadRecord(recordKey(uuid, null), uuid);
       if (record != null) {
          details.add("Window count: " + record.count() + " | Total: " + record.totalViolations());
          details.add("First: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
@@ -166,6 +215,9 @@ public final class PunishmentTracker {
          details.add("Last: " + new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss")
                .format(new java.util.Date(record.lastViolation())));
          details.add("Player: " + record.playerName());
+         if (record.world() != null) {
+            details.add("World: " + record.world());
+         }
       }
       return details;
    }
@@ -175,10 +227,11 @@ public final class PunishmentTracker {
     */
    public synchronized void importRecord(ViolationRecord record) {
       if (record == null) return;
+      String key = recordKey(record.uuid(), record.world());
       if (hasDatabase()) {
-         saveRecord(record);
+         saveRecord(key, record);
       }
-      this.memoryCache.put(record.uuid(), record);
+      this.memoryCache.put(key, record);
    }
 
    private boolean hasDatabase() {
@@ -186,6 +239,7 @@ public final class PunishmentTracker {
    }
 
    public synchronized void resetPlayer(UUID uuid) {
+      // Reset in all worlds + global
       if (hasDatabase()) {
          try (PreparedStatement ps = this.connection.prepareStatement(
                "DELETE FROM violations WHERE uuid = ?")) {
@@ -195,7 +249,24 @@ public final class PunishmentTracker {
             this.plugin.getLogger().warning("Failed to reset player: " + e.getMessage());
          }
       }
-      this.memoryCache.remove(uuid);
+      this.memoryCache.entrySet().removeIf(e -> e.getKey().startsWith(uuid.toString()));
+   }
+
+   /**
+    * Reset player's violation record in a specific world.
+    */
+   public synchronized void resetPlayer(UUID uuid, String world) {
+      String key = recordKey(uuid, world);
+      if (hasDatabase()) {
+         try (PreparedStatement ps = this.connection.prepareStatement(
+               "DELETE FROM violations WHERE id = ?")) {
+            ps.setString(1, key);
+            ps.executeUpdate();
+         } catch (SQLException e) {
+            this.plugin.getLogger().warning("Failed to reset player in world: " + e.getMessage());
+         }
+      }
+      this.memoryCache.remove(key);
    }
 
    public synchronized List<ViolationRecord> getAllRecords() {
@@ -248,11 +319,11 @@ public final class PunishmentTracker {
       this.memoryCache.clear();
    }
 
-   private ViolationRecord loadRecord(UUID uuid) {
+   private ViolationRecord loadRecord(String key, UUID uuid) {
       if (hasDatabase()) {
          try (PreparedStatement ps = this.connection.prepareStatement(
-               "SELECT * FROM violations WHERE uuid = ?")) {
-            ps.setString(1, uuid.toString());
+               "SELECT * FROM violations WHERE id = ?")) {
+            ps.setString(1, key);
             try (ResultSet rs = ps.executeQuery()) {
                if (rs.next()) {
                   return fromResultSet(rs);
@@ -262,26 +333,28 @@ public final class PunishmentTracker {
             this.plugin.getLogger().warning("Failed to load record: " + e.getMessage());
          }
       }
-      return this.memoryCache.get(uuid);
+      return this.memoryCache.get(key);
    }
 
-   private void saveRecord(ViolationRecord record) {
+   private void saveRecord(String key, ViolationRecord record) {
       if (hasDatabase()) {
          try (PreparedStatement ps = this.connection.prepareStatement(
-               "INSERT OR REPLACE INTO violations (uuid, player_name, count, first_violation, last_violation, total_violations) "
-                     + "VALUES (?, ?, ?, ?, ?, ?)")) {
-            ps.setString(1, record.uuid().toString());
-            ps.setString(2, record.playerName());
-            ps.setInt(3, record.count());
-            ps.setLong(4, record.firstViolation());
-            ps.setLong(5, record.lastViolation());
-            ps.setInt(6, record.totalViolations());
+               "INSERT OR REPLACE INTO violations (id, uuid, player_name, count, first_violation, last_violation, total_violations, world) "
+                     + "VALUES (?, ?, ?, ?, ?, ?, ?, ?)")) {
+            ps.setString(1, key);
+            ps.setString(2, record.uuid().toString());
+            ps.setString(3, record.playerName());
+            ps.setInt(4, record.count());
+            ps.setLong(5, record.firstViolation());
+            ps.setLong(6, record.lastViolation());
+            ps.setInt(7, record.totalViolations());
+            ps.setString(8, record.world());
             ps.executeUpdate();
          } catch (SQLException e) {
             this.plugin.getLogger().warning("Failed to save record: " + e.getMessage());
          }
       } else {
-         this.memoryCache.put(record.uuid(), record);
+         this.memoryCache.put(key, record);
       }
    }
 
@@ -304,13 +377,20 @@ public final class PunishmentTracker {
    }
 
    private static ViolationRecord fromResultSet(ResultSet rs) throws SQLException {
+      String world;
+      try {
+         world = rs.getString("world");
+      } catch (SQLException e) {
+         world = null;
+      }
       return new ViolationRecord(
             UUID.fromString(rs.getString("uuid")),
             rs.getString("player_name"),
             rs.getInt("count"),
             rs.getLong("first_violation"),
             rs.getLong("last_violation"),
-            rs.getInt("total_violations")
+            rs.getInt("total_violations"),
+            world
       );
    }
 }

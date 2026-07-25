@@ -56,9 +56,56 @@ public final class AntiLitematicaCommand implements CommandExecutor {
             return handleTestNotify(sender);
          case "whitelist":
             return handleWhitelist(sender, args);
+         case "world":
+            return handleWorld(sender, args);
          default:
             return false;
       }
+   }
+
+   private boolean handleWorld(CommandSender sender, String[] args) {
+      Settings s = this.plugin.settings();
+      if (args.length < 2) {
+         sender.sendMessage(ChatColor.GOLD + "=== AntiLitematica Multi-World ===");
+         sender.sendMessage(ChatColor.GRAY + "/al world list" + ChatColor.WHITE + " — List all configured worlds");
+         sender.sendMessage(ChatColor.GRAY + "/al world <world>" + ChatColor.WHITE + " — Show world status");
+         return true;
+      }
+      String worldName = args[1].toLowerCase(java.util.Locale.ROOT);
+      if (worldName.equals("list")) {
+         sender.sendMessage(ChatColor.GOLD + "=== Configured Worlds ===");
+         var worlds = s.worlds();
+         if (worlds == null || worlds.isEmpty()) {
+            sender.sendMessage(ChatColor.YELLOW + "No per-world configuration found. All worlds use global settings.");
+         } else {
+            for (String w : worlds.keySet()) {
+               sender.sendMessage(ChatColor.GRAY + " - " + ChatColor.WHITE + w);
+            }
+         }
+         return true;
+      }
+      // Show status for a specific world
+      Settings.WorldSettings ws = s.worldSettings(worldName);
+      sender.sendMessage(ChatColor.GOLD + "=== World: " + worldName + " ===");
+      if (ws == null) {
+         sender.sendMessage(ChatColor.GRAY + "No per-world overrides. Using global settings.");
+      } else {
+         sender.sendMessage(ChatColor.GRAY + "enabled=" + formatNullable(ws.enabled())
+               + " detection=" + formatNullable(ws.detectionEnabled())
+               + " antiPrinter=" + formatNullable(ws.antiPrinterEnabled())
+               + " commandGuard=" + formatNullable(ws.commandGuardEnabled())
+               + " graduated=" + formatNullable(ws.graduatedPunishmentEnabled()));
+      }
+      // Also show effective settings
+      sender.sendMessage(ChatColor.GRAY + "Effective: detection=" + s.isDetectionEnabledForWorld(worldName)
+            + " antiPrinter=" + s.isAntiPrinterEnabledForWorld(worldName)
+            + " commandGuard=" + s.isCommandGuardEnabledForWorld(worldName)
+            + " graduated=" + s.isGraduatedPunishmentEnabledForWorld(worldName));
+      return true;
+   }
+
+   private static String formatNullable(Boolean b) {
+      return b == null ? "global" : b.toString();
    }
 
    private boolean handleStatus(CommandSender sender) {

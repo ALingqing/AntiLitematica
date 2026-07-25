@@ -4,6 +4,7 @@ import java.util.UUID;
 
 /**
  * Data class for a player's violation record.
+ * Supports per-world tracking for multi-world compatibility.
  */
 public final class ViolationRecord {
    private final UUID uuid;
@@ -12,14 +13,20 @@ public final class ViolationRecord {
    private long firstViolation;
    private long lastViolation;
    private int totalViolations;
+   private String world; // null = global, otherwise world name
 
    public ViolationRecord(UUID uuid, String playerName, int count, long firstViolation, long lastViolation, int totalViolations) {
+      this(uuid, playerName, count, firstViolation, lastViolation, totalViolations, null);
+   }
+
+   public ViolationRecord(UUID uuid, String playerName, int count, long firstViolation, long lastViolation, int totalViolations, String world) {
       this.uuid = uuid;
       this.playerName = playerName;
       this.count = count;
       this.firstViolation = firstViolation;
       this.lastViolation = lastViolation;
       this.totalViolations = totalViolations;
+      this.world = world;
    }
 
    public UUID uuid() {
@@ -64,5 +71,13 @@ public final class ViolationRecord {
 
    public void totalViolations(int totalViolations) {
       this.totalViolations = totalViolations;
+   }
+
+   public String world() {
+      return this.world;
+   }
+
+   public void world(String world) {
+      this.world = world;
    }
 }

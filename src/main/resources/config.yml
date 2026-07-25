@@ -181,6 +181,20 @@ stats:
   record_retention_days: 30
   stats_retention_days: 90
 
+# 多世界配置（覆盖全局设置）
+# 在此按世界名设置独立开关，未列出的世界使用全局配置
+worlds:
+  # example_world:
+  #   enabled: true
+  #   detection:
+  #     enabled: true
+  #   anti_printer:
+  #     enabled: true
+  #   command_guard:
+  #     enabled: true
+  #   graduated_punishment:
+  #     enabled: true
+
 # bStats 匿名统计
 bstats:
   enabled: true
