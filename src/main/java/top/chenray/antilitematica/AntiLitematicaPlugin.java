@@ -86,8 +86,6 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
 
       this.reloadSettings();
 
-      this.masaCompat = new MasaCompat(this, this.settings);
-
       // PlaceholderAPI
       if (this.getServer().getPluginManager().getPlugin("PlaceholderAPI") != null) {
          new AntiLitematicaExpansion(this).register();
@@ -151,6 +149,7 @@ public final class AntiLitematicaPlugin extends JavaPlugin {
          return;
       }
 
+      this.masaCompat = new MasaCompat(this, this.settings);
       this.dynamicThresholdManager.reload();
       // Register DetectionBus handlers
       this.detectionBus.clear();
