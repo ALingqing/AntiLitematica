@@ -1,5 +1,58 @@
 # Changelog
 
+## v6.4.0 (2026-07-25)
+
+### Multi-World Support
+- **Per-world config** — New `worlds:` section in `config.yml` allows overriding settings per world (detection, anti-printer, command guard, graduated punishment).
+- **World-aware tracking** — Violation counters, token buckets, and placement analysis are now isolated per world. Switching worlds resets tracking state.
+- **World-aware punishment** — `punished` state tracked per-world; `/al world list|<name>` command for inspection.
+
+### Admin GUI
+- **In-game management panel** — `/al gui` (alias: `/al menu`, `/al panel`) opens a 6-row inventory GUI.
+- **Pages** — Main menu with status overview + feature toggles; Player list with pagination; World settings with click-to-toggle; Whitelist management.
+- **Safe clicks** — Border protection, material validation prevents accidental triggers.
+
+### Command Tab Completion
+- **TabCompleter** — `/al ` + Tab now completes subcommands, player names, world names.
+- **New subcommands** — `/al world`, `/al gui`, `/al menu`, `/al panel`.
+
+### Bug Fixes
+- **Duplicate `settings()` method** — Removed; previously caused compilation error.
+- **`getWorld()` NPE** — 3 locations now have null checks for `player.getWorld()`.
+- **Command injection** — All ban hooks (LiteBans, AdvancedBan, EssentialsX) and `runCommands()` sanitize player names and reasons.
+- **OneBot CQ code injection** — `auto_escape` changed from `false` to `true`.
+- **Discord proxy auth** — `proxyUsername`/`proxyPassword` now properly set `Proxy-Authorization` header.
+- **DetectionEvent duplicate** — Removed from `GraduatedPunisher.punish()` and API `triggerDetection()`; `Punisher.punishDetection()` is the single source.
+- **CommandGuard missing event** — Now fires `DetectionEvent` with type `COMMAND_GUARD`.
+- **PunishmentEvent async** — Changed from hardcoded `super(true)` to `super(!Bukkit.isPrimaryThread())`.
+- **CommandGuard burst logic** — Only blocked commands are counted toward burst limit (was all non-allowed commands).
+- **SQLite migration** — Uses `PRAGMA table_info` for safe schema detection instead of fragile `SELECT`.
+- **Burst match precision** — `startsWith` matching now requires command boundary (space or EOL), preventing `/setblock` matching `/setblockinfo`.
+- **Graduated default** — Changed from `true` to `false` to prevent accidental auto-ban on first load.
+- **Config load order** — `saveDefaultConfig()` now runs before `ConfigMigrator.migrate()`.
+- **`unmarkPunished(UUID)`** — Now clears from ALL worlds (was only `_global_`).
+- **ConfigMigrator dead code** — Removed post-save file existence check.
+
+### Architecture Improvements
+- **`CommandSanitizer`** — New shared utility for command injection prevention.
+- **`AbstractBanHook`** — Base class eliminating 3 copies of `sanitize()` and `warn()`.
+- **`BedrockPlayerDetector`** — New Geyser/Bedrock player detection (Floodgate API + prefix fallback).
+- **`PlayerTracker`** — Unified per-player data replaces 6 separate maps in `PlacementGuard`; single `trackers.remove(id)` on quit.
+- **`DetectionBus` / `DetectionHandler`** — Detection-punishment decoupling bus; external plugins can register custom handlers.
+- **`DynamicThresholdManager`** — Now reads from `Settings` record instead of raw `config.yml`.
+- **`NbtLite.tryExtractServuxVersionString()`** — Shared method eliminates duplicate in `ModChannelDetector` and `ProtocolLibBridge`.
+- **`Whitelist.mode` validation** — Invalid mode values log a warning and fall back to `LOG_ONLY`.
+- **`PunishmentTracker.cleanupOldRecords()`** — Reads `stats.record_retention_days` from config instead of hardcoded 30 days.
+- **`StatsTracker`** — Config keys `record_retention_days` and `stats_retention_days` are now properly consumed.
+
+### Geyser Compatibility
+- **Actually implemented** — Bedrock players auto-exempted from all checks via Floodgate API (reflection) with name prefix fallback.
+
+### Documentation
+- **`.gitignore`** — Added excluding `target/`, IDE files, OS files, logs.
+- **`README.md`** — Geyser support restored (now actually implemented); commands/permissions tables updated.
+- **`COMMANDS.md`** — Added `/al world`, `/al gui`, `antilitematica.gui` permission; removed non-existent `/al build`.
+
 ## v6.3.0 (2026-06-06)
 
 ### Paper API Update
