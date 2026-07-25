@@ -1,6 +1,6 @@
 name: AntiLitematica
 main: top.chenray.antilitematica.AntiLitematicaPlugin
-version: 6.0.0
+version: ${project.version}
 api-version: '1.21'
 folia-supported: true
 author: aqing
