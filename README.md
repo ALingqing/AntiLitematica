@@ -214,6 +214,11 @@ src/main/kotlin/icu/epochcraft/antilitematica/
 ## 文档
 
 - [docs/API.md](docs/API.md) — 公开 API 开发指南（附属插件）
+- [docs/CONTRIBUTING.md](docs/CONTRIBUTING.md) — 贡献指南
+- [wiki/INSTALL.md](wiki/INSTALL.md) — 安装指南
+- [wiki/CONFIG.md](wiki/CONFIG.md) — 配置指南
+- [wiki/COMMANDS.md](wiki/COMMANDS.md) — 命令与权限
+- [wiki/FAQ.md](wiki/FAQ.md) — 常见问题
 
 ## ⚖️ 开源许可
 
