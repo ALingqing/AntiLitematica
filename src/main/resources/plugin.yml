@@ -1,0 +1,28 @@
+name: AntiLitematica
+version: '1.1.0'
+main: icu.epochcraft.antilitematica.AntiLitematica
+api-version: '1.20'
+author: 阿清
+description: 检测并阻止携带 Litematica（投影）/ Schematica 等 mod 的玩家进入服务器
+website: https://epochcraft.icu
+softdepend:
+  - PlaceholderAPI
+  - ProtocolLib
+  - LiteBans
+  - AdvancedBan
+commands:
+  antilitematica:
+    description: AntiLitematica 管理命令
+    usage: /antilitematica [menu|reload|list|add|remove|ban|unban|preset|stats|history|forgive|version]
+    aliases: [alt, alitematica]
+    permission: antilitematica.admin
+permissions:
+  antilitematica.admin:
+    description: 使用 AntiLitematica 管理菜单与命令
+    default: op
+  antilitematica.notify:
+    description: 收到玩家因安装禁用 Mod 被处理的实时通知
+    default: op
+  antilitematica.bypass:
+    description: 豁免检测（测试号 / 白名单）
+    default: false

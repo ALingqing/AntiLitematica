@@ -1,0 +1,67 @@
+# AntiLitematica Language File - English
+# File: lang/en_us.yml
+# Run /antilitematica reload after editing
+
+# Language identifier (do not change)
+lang: en_us
+
+# Common
+common.no-permission: "&cYou don't have permission to use this command"
+common.player-only: "&cThis command can only be used by players"
+common.usage: "&cUsage: {usage}"
+common.unknown-command: "&cUnknown subcommand &f{command}&c. Available: {available}"
+common.not-found: "&cNot found: {target}"
+common.invalid-number: "&cInvalid number: {value}"
+
+# Action / Preset names (shown to players)
+action.KICK: "Kick"
+action.BAN: "Ban"
+action.WARN: "Warn"
+action.LOG: "Log"
+mode.STRICT: "Strict mode"
+mode.NORMAL: "Normal mode"
+mode.LITE: "Lite mode"
+
+# Detection
+detection.kick: "&cWe detected you have a disallowed mod installed ({mod}). &7Please remove it and rejoin the server!"
+detection.warn: "&e[Notice] &7We detected {mod} installed. &eThis mod is not allowed on the server, please leave now!"
+detection.notify-admin: "§e{player} §7was handled for installing a disallowed mod ({mod}, channel {channel}): §f{action}"
+detection.ban-reason: "Auto-ban: repeatedly detected installing a disallowed mod ({channel})"
+
+# Ban
+ban.login: "&cYou are banned!\n&7Reason: &f{reason}\n&7Time remaining: &f{expires}"
+ban.kick: "&cYou are banned!\n&7Reason: &f{reason}\n&7Time remaining: &f{expires}"
+ban.success: "&aBanned &f{player} &aReason: &f{reason}&a Duration: &f{duration}"
+ban.unban: "&aUnbanned &f{player}"
+ban.list-empty: "&7There are no bans right now"
+ban.reason-admin: "Banned by an administrator"
+
+# Statistics
+stats.header: "&6AntiLitematica Statistics"
+stats.detections: "&7Total detections: &f{count}"
+stats.bans: "&7Current bans: &f{count}"
+stats.top-channels: "&7Top channels: &f{list}"
+stats.daily: "&7Last {days} days: &f{list}"
+
+# Command feedback
+cmd.reloaded: "&aConfig reloaded | Blocked channels: &f{channels}"
+cmd.channel-added: "&aAdded channel &f{channel} &7Action: &f{action}"
+cmd.channel-exists: "&cChannel already exists: &f{channel}"
+cmd.channel-removed: "&aRemoved channel &f{channel}"
+cmd.channel-not-found: "&cChannel not found: &f{channel}"
+cmd.list-header: "&7Current channel config ({count}):"
+cmd.list-line: " §8- §f{channel} §7Action: §{color}{action}{duration}"
+cmd.list-ban-suffix: " §7({duration})"
+cmd.list-footer: " §7Preset: §f{mode} §7| Auto-ban: §f{status}"
+cmd.auto-ban-on: "On ({kicks} kicks → {duration})"
+cmd.auto-ban-off: "Off"
+cmd.preset: "&aSwitched preset mode: &f{mode}"
+cmd.forgive: "&aMarked &f{player} &aas false positive (the channels they matched are now exempt)"
+cmd.history-empty: "&7No detection records for this player"
+cmd.history-header: "&7Latest {count} detection records for {target}:"
+cmd.history-line: " §8- §f{channel} §7({mod}) §8| §f{action} §8| §7{time}"
+cmd.unknown: "Unknown"
+cmd.version-current: "&7Current version: &fv{version}"
+cmd.version-update: "&eNew version available: &fv{version} &7(please update)"
+cmd.version-latest: "&aYou are on the latest version: &fv{version}"
+cmd.version-unavailable: "&7Update check unavailable (repository not configured or network unreachable)"

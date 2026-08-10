@@ -1,0 +1,168 @@
+# AntiLitematica 配置文件
+# 修改后执行 /antilitematica reload 生效
+#
+# 管理菜单: /antilitematica
+#   - Paper 1.21.7+（服务端 >= 1.21.6）使用原生 Dialog 菜单
+#   - 旧版本服务端自动回退到箱子菜单
+
+# 语言（lang/ 文件夹内的语言文件）
+#   内置: zh_cn(简体中文) / zh_tw(繁體中文) / en_us(English)
+#   首次启动会自动把内置语言文件复制到 <数据文件夹>/lang/，可自行修改或新增
+language: zh_cn
+
+# 预设模式（影响自动封禁 / 环境检测的默认行为）
+#   strict - 严格：自动封禁开启（2次KICK转封禁30天），记录 Forge/Fabric 环境
+#   normal - 标准：自动封禁关闭，记录 Forge/Fabric 环境
+#   lite   - 轻量：仅检测通道，不记录环境
+mode: normal
+
+# 要检测的插件通道 -> 动作
+# 动作: KICK(踢出) / BAN(封禁) / WARN(警告) / LOG(仅记录)
+# ban-duration: 封禁时长（如 1h / 7d / 30d / permanent），仅 BAN 动作生效
+channels:
+  "servux:litematics":
+    action: KICK
+    ban-duration: 30d
+  "schematica":
+    action: KICK
+    ban-duration: 30d
+
+# 踢出消息（支持 & 颜色代码）
+kick-message: "&c检测到你安装了不允许的 Mod（Litematica 投影），&7请移除后重新加入服务器！"
+
+# 是否在控制台记录检测日志
+log-detections: true
+
+# 是否通知拥有 antilitematica.notify 权限的在线管理员
+notify-admins: true
+
+# 二次验证延迟（tick）：进服后延迟复查通道与 Brand，防绕过
+recheck-delay-ticks: 10
+
+# 记录 Forge/Fabric 环境通道信息（仅记录，不踢出）
+detect-forge-handshake: true
+detect-fabric-api: true
+
+# 客户端 Brand 黑名单（命中即踢，谨慎开启！如 fabric / forge / lunar / badlion）
+brand-blocklist: []
+
+# 同一玩家重复检测冷却（毫秒），避免反复踢
+detection-cooldown-ms: 5000
+
+# 自动封禁
+auto-ban:
+  enabled: false
+  kicks-before-ban: 3
+  duration: 30d
+
+# 渐进惩罚（按违规次数逐级升级）
+# 开启后：第1次警告 → 第2次踢出 → 第3次封禁1天 → 第4次永久封禁（按 levels 顺序）
+# 窗口（window-minutes）内计数，超出窗口自动重置
+graduated-punishment:
+  enabled: false
+  window-minutes: 1440
+  levels:
+    1:
+      action: WARN
+      reason: "&e检测到使用投影 mod，请立即退出！"
+      broadcast: false
+      staff-alert: true
+    2:
+      action: KICK
+      reason: "&c再次使用投影 mod，已被踢出！"
+      broadcast: false
+      staff-alert: true
+    3:
+      action: TEMPBAN
+      duration: 1d
+      reason: "&c多次使用投影 mod，封禁 1 天！"
+      broadcast: true
+      staff-alert: true
+    4:
+      action: BAN
+      reason: "&c屡次使用投影 mod，永久封禁！"
+      broadcast: true
+      staff-alert: true
+  # 超过最高级后的处理
+  exceed-max:
+    action: BAN
+    reason: "&c屡次使用投影 mod，永久封禁！"
+
+# 防 Printer（检测 Litematica 打印机自动放置）
+# 打印机放置速度远超人类，且视角不会变化、方块高度重复——以下特征均可独立触发
+anti-printer:
+  enabled: false
+  # 每秒最大放置数（令牌桶限速）
+  max-blocks-per-second: 14
+  # 是否检测创造模式玩家
+  apply-to-creative: false
+  # 射线校验（Tweakeroo 灵活放置会偏离真实射线）
+  enforce-raytrace: true
+  # 连续同类型方块检测（窗口内同类型占比 >= 80%）
+  detect-consecutive-same-type: true
+  consecutive-same-type-threshold: 8
+  consecutive-window-ms: 3000
+  # 视角不变检测（yaw/pitch 无变化连续放置）
+  detect-no-look-change: true
+  # 射线距离
+  reach-survival: 4.5
+  reach-creative: 5.0
+  extra-reach-allowance: 0.5
+
+# 命令防护（拦截 quick-paste 命令滥用）
+# 命中 blocked 的命令会在窗口内限流，连续快速执行判定为 Litematica 滥用
+# 默认空列表，按服自行配置（如 /setblock /fill /clone），避免误伤正常使用
+command-guard:
+  enabled: false
+  # 永远放行的命令（精确匹配或前缀+空格）
+  allowed-commands: []
+  # 拦截命令列表
+  blocked-commands: []
+  # 窗口内最大执行次数（超限判定）
+  max-per-window: 8
+  window-ms: 2000
+
+# ProtocolLib 信号检测（需安装 ProtocolLib）
+# EasyPlace：Litematica 易放模式命中向量偏移异常（连续 N 次才触发，防误伤）
+# NBT 查询：高频 TILE/ENTITY_NBT_QUERY（默认关闭 + 频率门控，避免误伤 F3 玩家）
+signals:
+  easy-place:
+    enabled: false
+    cancel: true
+    rel-min: -0.5
+    rel-max: 1.5
+    min-consecutive: 3
+  nbt-query:
+    enabled: false
+    allow-op: true
+    cancel: true
+    threshold: 15
+
+# 反作弊集成
+# 把检测同步 flag 给第三方反作弊：auto / grim / vulcan / matrix
+# 服务端未安装对应反作弊时自动降级
+anti-cheat-integration: auto
+
+# 封禁后端联动
+# 封禁执行后端：auto / internal / litebans / advancedban
+#   auto        - 自动探测：LiteBans → AdvancedBan → 内置 SQLite
+#   litebans    - 联动 LiteBans（需安装 LiteBans，未安装回退内置）
+#   advancedban - 联动 AdvancedBan（需安装 AdvancedBan，未安装回退内置）
+#   internal    - 强制内置 SQLite（默认行为）
+# 联动外部后端时采用双写：外部封禁插件 + 本地数据库，list / stats / 登录拦截保持统一
+ban-backend: auto
+
+# 通知（纯出站，无需开放端口）
+webhook:
+  # Discord Webhook 地址（留空关闭）
+  discord: ""
+  # QQ 群通知（OneBot v11 / NapCat 兼容，出站调用 send_group_msg）
+  onebot:
+    enabled: false
+    base-url: "http://127.0.0.1:3001"
+    access-token: ""
+    group-id: 0
+
+# 更新检查
+update-checker: true
+update-repo: "EpochcraftMC/AntiLitematica"

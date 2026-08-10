@@ -1,0 +1,67 @@
+# AntiLitematica 語言檔 - 繁體中文
+# 檔案: lang/zh_tw.yml
+# 修改後執行 /antilitematica reload 生效
+
+# 語言標識（用於識別目前語言，請勿修改）
+lang: zh_tw
+
+# 通用
+common.no-permission: "&c你沒有權限執行該指令"
+common.player-only: "&c該指令僅限玩家使用"
+common.usage: "&c用法: {usage}"
+common.unknown-command: "&c未知子指令 &f{command}&c，可用: {available}"
+common.not-found: "&c未找到: {target}"
+common.invalid-number: "&c無效的數字: {value}"
+
+# 動作 / 預設名稱（面向玩家顯示）
+action.KICK: "踢出"
+action.BAN: "封鎖"
+action.WARN: "警告"
+action.LOG: "記錄"
+mode.STRICT: "嚴格模式"
+mode.NORMAL: "標準模式"
+mode.LITE: "輕量模式"
+
+# 偵測
+detection.kick: "&c偵測到你安裝了不允許的 Mod（{mod}），&7請移除後重新加入伺服器！"
+detection.warn: "&e[提示] &7偵測到你安裝了 {mod}，&e伺服器不允許使用該 mod，請盡快退出！"
+detection.notify-admin: "§e{player} §7因安裝禁用 Mod（{mod}，通道 {channel}）被處理: §f{action}"
+detection.ban-reason: "自動封鎖：多次偵測到安裝禁用 Mod（{channel}）"
+
+# 封鎖
+ban.login: "&c你已被封鎖！\n&7原因: &f{reason}\n&7剩餘時間: &f{expires}"
+ban.kick: "&c你已被封鎖！\n&7原因: &f{reason}\n&7剩餘時間: &f{expires}"
+ban.success: "&a已封鎖 &f{player} &a原因: &f{reason}&a 時長: &f{duration}"
+ban.unban: "&a已解除封鎖 &f{player}"
+ban.list-empty: "&7目前沒有封鎖紀錄"
+ban.reason-admin: "管理員封鎖"
+
+# 統計
+stats.header: "&6AntiLitematica 統計"
+stats.detections: "&7偵測總數: &f{count}"
+stats.bans: "&7目前封鎖: &f{count}"
+stats.top-channels: "&7命中通道 TOP: &f{list}"
+stats.daily: "&7近{days}天: &f{list}"
+
+# 指令回饋
+cmd.reloaded: "&a配置已重載 | 禁用通道: &f{channels}"
+cmd.channel-added: "&a已新增通道 &f{channel} &7動作: &f{action}"
+cmd.channel-exists: "&c通道已存在: &f{channel}"
+cmd.channel-removed: "&a已移除通道 &f{channel}"
+cmd.channel-not-found: "&c通道不存在: &f{channel}"
+cmd.list-header: "&7目前通道配置 ({count}):"
+cmd.list-line: " §8- §f{channel} §7動作: §{color}{action}{duration}"
+cmd.list-ban-suffix: " §7({duration})"
+cmd.list-footer: " §7預設: §f{mode} §7| 自動封鎖: §f{status}"
+cmd.auto-ban-on: "開啟({kicks}次→{duration})"
+cmd.auto-ban-off: "關閉"
+cmd.preset: "&a已切換預設模式: &f{mode}"
+cmd.forgive: "&a已將 &f{player} &a標記為誤報（該玩家目前命中的通道將豁免）"
+cmd.history-empty: "&7該玩家暫無偵測紀錄"
+cmd.history-header: "&7{target} 的最近 {count} 條偵測紀錄:"
+cmd.history-line: " §8- §f{channel} §7({mod}) §8| §f{action} §8| §7{time}"
+cmd.unknown: "未知"
+cmd.version-current: "&7目前版本: &fv{version}"
+cmd.version-update: "&e發現新版本: &fv{version} &7(請更新)"
+cmd.version-latest: "&a已是最新版本: &fv{version}"
+cmd.version-unavailable: "&7更新檢查不可用（未配置倉庫或網路不可達）"

@@ -1,0 +1,67 @@
+# AntiLitematica 语言文件 - 简体中文（默认）
+# 文件: lang/zh_cn.yml
+# 修改后执行 /antilitematica reload 生效
+
+# 语言标识（用于识别当前语言，请勿修改）
+lang: zh_cn
+
+# 通用
+common.no-permission: "&c你没有权限执行该命令"
+common.player-only: "&c该命令仅限玩家使用"
+common.usage: "&c用法: {usage}"
+common.unknown-command: "&c未知子命令 &f{command}&c，可用: {available}"
+common.not-found: "&c未找到: {target}"
+common.invalid-number: "&c无效的数字: {value}"
+
+# 动作 / 预设名称（面向玩家显示）
+action.KICK: "踢出"
+action.BAN: "封禁"
+action.WARN: "警告"
+action.LOG: "记录"
+mode.STRICT: "严格模式"
+mode.NORMAL: "标准模式"
+mode.LITE: "轻量模式"
+
+# 检测
+detection.kick: "&c检测到你安装了不允许的 Mod（{mod}），&7请移除后重新加入服务器！"
+detection.warn: "&e[提示] &7检测到你安装了 {mod}，&e服务器不允许使用该 mod，请尽快退出！"
+detection.notify-admin: "§e{player} §7因安装禁用 Mod（{mod}，通道 {channel}）被处理: §f{action}"
+detection.ban-reason: "自动封禁：多次检测到安装禁用 Mod（{channel}）"
+
+# 封禁
+ban.login: "&c你已被封禁！\n&7原因: &f{reason}\n&7剩余时间: &f{expires}"
+ban.kick: "&c你已被封禁！\n&7原因: &f{reason}\n&7剩余时间: &f{expires}"
+ban.success: "&a已封禁 &f{player} &a原因: &f{reason}&a 时长: &f{duration}"
+ban.unban: "&a已解封 &f{player}"
+ban.list-empty: "&7当前没有封禁记录"
+ban.reason-admin: "管理员封禁"
+
+# 统计
+stats.header: "&6AntiLitematica 统计"
+stats.detections: "&7检测总数: &f{count}"
+stats.bans: "&7当前封禁: &f{count}"
+stats.top-channels: "&7命中通道 TOP: &f{list}"
+stats.daily: "&7近{days}天: &f{list}"
+
+# 命令反馈
+cmd.reloaded: "&a配置已重载 | 禁用通道: &f{channels}"
+cmd.channel-added: "&a已添加通道 &f{channel} &7动作: &f{action}"
+cmd.channel-exists: "&c通道已存在: &f{channel}"
+cmd.channel-removed: "&a已移除通道 &f{channel}"
+cmd.channel-not-found: "&c通道不存在: &f{channel}"
+cmd.list-header: "&7当前通道配置 ({count}):"
+cmd.list-line: " §8- §f{channel} §7动作: §{color}{action}{duration}"
+cmd.list-ban-suffix: " §7({duration})"
+cmd.list-footer: " §7预设: §f{mode} §7| 自动封禁: §f{status}"
+cmd.auto-ban-on: "开启({kicks}次→{duration})"
+cmd.auto-ban-off: "关闭"
+cmd.preset: "&a已切换预设模式: &f{mode}"
+cmd.forgive: "&a已将 &f{player} &a标记为误报（该玩家当前命中的通道将豁免）"
+cmd.history-empty: "&7该玩家暂无检测记录"
+cmd.history-header: "&7{target} 的最近 {count} 条检测记录:"
+cmd.history-line: " §8- §f{channel} §7({mod}) §8| §f{action} §8| §7{time}"
+cmd.unknown: "未知"
+cmd.version-current: "&7当前版本: &fv{version}"
+cmd.version-update: "&e发现新版本: &fv{version} &7(请更新)"
+cmd.version-latest: "&a已是最新版本: &fv{version}"
+cmd.version-unavailable: "&7更新检查不可用（未配置仓库或网络不可达）"
