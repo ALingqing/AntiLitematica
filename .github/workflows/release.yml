@@ -28,8 +28,12 @@ jobs:
       - name: Build with Maven
         run: mvn -B package --no-transfer-progress -DskipTests
 
+      - name: Verify artifact
+        run: ls -la target/AntiLitematica-*.jar
+
       - name: Create GitHub Release
         uses: softprops/action-gh-release@v2
         with:
           files: target/AntiLitematica-*.jar
+          fail_on_unmatched_files: true
           generate_release_notes: true
