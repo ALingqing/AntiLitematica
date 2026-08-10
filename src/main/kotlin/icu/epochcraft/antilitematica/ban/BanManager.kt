@@ -64,6 +64,9 @@ class BanManager(
 
         backend.ban(uuid, name, reason, durationMillis)
 
+        // 跨服同步：广播封禁（全网封禁，接收端不递归广播）
+        plugin.crossServerSync?.onLocalBan(uuid, name, reason, durationMillis == BanRecord.PERMANENT)
+
         // 外部后端联动时同步写本地数据库（list / stats / 登录拦截统一查询）
         if (!isInternal) {
             database.insertBan(BanRecord(uuid, name, reason, expiresAt = expiresAt))

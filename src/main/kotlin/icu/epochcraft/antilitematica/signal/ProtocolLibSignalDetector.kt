@@ -115,7 +115,7 @@ class ProtocolLibSignalDetector(private val plugin: AntiLitematica) {
         epCancel = s.easyPlaceCancel
         epRelMin = s.easyPlaceRelMin
         epRelMax = s.easyPlaceRelMax
-        epMinConsecutive = s.easyPlaceMinConsecutive.coerceAtLeast(2)
+        epMinConsecutive = plugin.masaCompat.easyPlaceThreshold(s.easyPlaceMinConsecutive.coerceAtLeast(2))
         nbtEnabled = s.nbtQueryEnabled
         nbtAllowOp = s.nbtQueryAllowOp
         nbtCancel = s.nbtQueryCancel

@@ -15,9 +15,9 @@
 mvn package
 
 # 2. 安装到本地仓库（版本号按实际修改）
-mvn install:install-file -Dfile=target/AntiLitematica-7.0.0.jar \
+mvn install:install-file -Dfile=target/AntiLitematica-7.0.0-fix.jar \
   -DgroupId=icu.epochcraft -DartifactId=AntiLitematica \
-  -Dversion=7.0.0 -Dpackaging=jar
+  -Dversion=7.0.0-fix -Dpackaging=jar
 ```
 
 ```xml
@@ -25,7 +25,7 @@ mvn install:install-file -Dfile=target/AntiLitematica-7.0.0.jar \
 <dependency>
     <groupId>icu.epochcraft</groupId>
     <artifactId>AntiLitematica</artifactId>
-    <version>7.0.0</version>
+    <version>7.0.0-fix</version>
     <scope>provided</scope>
 </dependency>
 ```
@@ -35,7 +35,7 @@ mvn install:install-file -Dfile=target/AntiLitematica-7.0.0.jar \
 ```kotlin
 // build.gradle.kts
 dependencies {
-    compileOnly(files("libs/AntiLitematica-7.0.0.jar"))
+    compileOnly(files("libs/AntiLitematica-7.0.0-fix.jar"))
 }
 ```
 

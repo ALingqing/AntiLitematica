@@ -196,6 +196,20 @@ class PluginConfig(
     var banBackend: String = "auto"
         private set
 
+    // ---------------- 兼容与联动 ----------------
+
+    /** 基岩版玩家豁免（Geyser/Floodgate，基岩版无 Litematica） */
+    var bedrockExempt: Boolean = true
+        private set
+
+    /** MasaMods 兼容：Tweakeroo 模式（放宽防误报阈值） */
+    var tweakerooMode: Boolean = false
+        private set
+
+    /** 跨服同步（BungeeCord/Velocity 代理环境） */
+    var crossServerSyncEnabled: Boolean = false
+        private set
+
     // ---------------- 通知（纯出站） ----------------
 
     /** Discord Webhook 地址（出站 HTTPS，无需开端口） */
@@ -346,6 +360,11 @@ class PluginConfig(
         // 封禁后端联动
         banBackend = yaml.getString("ban-backend", "auto") ?: "auto"
 
+        // 兼容与联动
+        bedrockExempt = yaml.getBoolean("bedrock-exempt", true)
+        tweakerooMode = yaml.getBoolean("compatibility.tweakeroo-mode", false)
+        crossServerSyncEnabled = yaml.getBoolean("cross-server-sync.enabled", false)
+
         discordWebhookUrl = yaml.getString("webhook.discord", "") ?: ""
         onebotEnabled = yaml.getBoolean("webhook.onebot.enabled", false)
         onebotBaseUrl = yaml.getString("webhook.onebot.base-url", "http://127.0.0.1:3001") ?: "http://127.0.0.1:3001"
@@ -438,6 +457,10 @@ class PluginConfig(
         yaml.set("anti-cheat-integration", antiCheatIntegration)
         // 封禁后端联动
         yaml.set("ban-backend", banBackend)
+        // 兼容与联动
+        yaml.set("bedrock-exempt", bedrockExempt)
+        yaml.set("compatibility.tweakeroo-mode", tweakerooMode)
+        yaml.set("cross-server-sync.enabled", crossServerSyncEnabled)
         yaml.set("webhook.discord", discordWebhookUrl)
         yaml.set("webhook.onebot.enabled", onebotEnabled)
         yaml.set("webhook.onebot.base-url", onebotBaseUrl)

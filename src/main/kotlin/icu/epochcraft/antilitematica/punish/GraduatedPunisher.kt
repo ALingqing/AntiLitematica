@@ -47,6 +47,10 @@ class GraduatedPunisher(
         if (player.hasPermission("antilitematica.bypass")) return
 
         val record = tracker.recordViolation(player, player.world.name)
+
+        // 跨服同步：广播违规记录（渐进惩罚计数跨服共享，防换服清零重来）
+        plugin.crossServerSync?.broadcastViolation(player, player.world.name, record.count, record.totalViolations)
+
         val levels = cfg.levels
 
         // 空等级表防御（旧版 B3 bug 修复）

@@ -6,6 +6,7 @@ import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
 import org.bukkit.event.player.PlayerJoinEvent
+import org.bukkit.event.player.PlayerQuitEvent
 import org.bukkit.event.player.PlayerRegisterChannelEvent
 
 /**
@@ -25,6 +26,9 @@ class ModDetectionListener(
     fun onChannelRegister(event: PlayerRegisterChannelEvent) {
         val channel = event.channel.lowercase()
         val cfg = plugin.configHolder
+
+        // MasaMods 兼容：记录玩家使用的 Masa 系模组（Tweakeroo 等）
+        plugin.masaCompat.detectChannel(event.player, channel)
 
         // 命中禁用通道 -> 按配置动作处理
         if (channel in cfg.channels.keys) {
@@ -71,5 +75,11 @@ class ModDetectionListener(
                 service.handleDetection(player, brand, DetectionSource.BRAND)
             }
         }
+    }
+
+    /** 玩家退出时清理 Masa 模组记录 */
+    @EventHandler
+    fun onQuit(event: PlayerQuitEvent) {
+        plugin.masaCompat.clearPlayer(event.player)
     }
 }

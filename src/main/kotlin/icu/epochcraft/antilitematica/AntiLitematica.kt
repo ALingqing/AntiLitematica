@@ -3,6 +3,7 @@ package icu.epochcraft.antilitematica
 import icu.epochcraft.antilitematica.ban.BanManager
 import icu.epochcraft.antilitematica.api.AntiLitematicaAPI
 import icu.epochcraft.antilitematica.command.AntiLitematicaCommand
+import icu.epochcraft.antilitematica.compat.MasaCompat
 import icu.epochcraft.antilitematica.config.LangManager
 import icu.epochcraft.antilitematica.config.PluginConfig
 import icu.epochcraft.antilitematica.database.DetectionDatabase
@@ -24,6 +25,7 @@ import icu.epochcraft.antilitematica.signal.ProtocolLibSignalDetector
 import icu.epochcraft.antilitematica.signal.SignalFactory
 import icu.epochcraft.antilitematica.statistics.BStatsHook
 import icu.epochcraft.antilitematica.statistics.StatsService
+import icu.epochcraft.antilitematica.sync.CrossServerSync
 import icu.epochcraft.antilitematica.update.UpdateChecker
 import org.bukkit.plugin.java.JavaPlugin
 import java.io.File
@@ -104,6 +106,14 @@ class AntiLitematica : JavaPlugin() {
     lateinit var adminMenu: AdminMenu
         private set
 
+    /** MasaMods 兼容（Tweakeroo 等） */
+    lateinit var masaCompat: MasaCompat
+        private set
+
+    /** 跨服同步（BungeeCord/Velocity，未配置时为 null） */
+    var crossServerSync: CrossServerSync? = null
+        private set
+
     override fun onEnable() {
         logStartupBanner()
         saveDefaultConfig()
@@ -114,6 +124,8 @@ class AntiLitematica : JavaPlugin() {
         configHolder = PluginConfig(this, langManager).also { it.reload() }
         database = DetectionDatabase(this).also { it.init() }
         banManager = BanManager(this, database).also { it.start() }
+        masaCompat = MasaCompat(this)
+        crossServerSync = CrossServerSync(this).also { it.enable() }
         detectionService = ModDetectionService(this)
         notificationService = NotificationService(this)
         statsService = StatsService(this)
@@ -173,6 +185,7 @@ class AntiLitematica : JavaPlugin() {
     override fun onDisable() {
         logShutdownBanner()
         AntiLitematicaAPI.shutdown()
+        crossServerSync?.disable()
         signalDetector?.shutdown()
         banManager.stop()
         database.close()

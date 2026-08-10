@@ -152,6 +152,21 @@ anti-cheat-integration: auto
 # 联动外部后端时采用双写：外部封禁插件 + 本地数据库，list / stats / 登录拦截保持统一
 ban-backend: auto
 
+# 基岩版玩家豁免（Geyser/Floodgate）
+# 基岩版客户端不存在 Litematica 等投影 mod，检测到基岩版玩家时全部豁免，消除误报
+bedrock-exempt: true
+
+# MasaMods 兼容（Tweakeroo / MiniHUD / ItemScroller）
+# tweakeroo-mode 开启后：Tweakeroo 用户跳过射线校验、EasyPlace 阈值 3→8、连续同类型阈值提高
+compatibility:
+  tweakeroo-mode: false
+
+# 跨服同步（BungeeCord / Velocity 代理环境）
+# 开启后：违规记录与封禁通过插件消息全网同步，防换服绕封/计数清零
+# 频道: al:violation / al:punish
+cross-server-sync:
+  enabled: false
+
 # 通知（纯出站，无需开放端口）
 webhook:
   # Discord Webhook 地址（留空关闭）

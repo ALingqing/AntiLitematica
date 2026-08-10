@@ -69,7 +69,7 @@ class PlacementGuard(private val plugin: AntiLitematica) : Listener {
         applyToCreative = ap.applyToCreative
         enforceRaytrace = ap.enforceRaytrace
         detectConsecutive = ap.detectConsecutiveSameType
-        consecutiveThreshold = ap.consecutiveSameTypeThreshold.coerceAtLeast(3)
+        consecutiveThreshold = plugin.masaCompat.consecutiveThreshold(ap.consecutiveSameTypeThreshold.coerceAtLeast(3))
         consecutiveWindowMs = ap.consecutiveWindowMs.coerceAtLeast(1000)
         detectNoLook = ap.detectNoLookChange
         reachSurvival = ap.reachSurvival
@@ -100,8 +100,8 @@ class PlacementGuard(private val plugin: AntiLitematica) : Listener {
             deny(event, p, "rate")
             return
         }
-        // 2. 射线校验
-        if (enforceRaytrace && !rayTraceMatches(p, placed, against)) {
+        // 2. 射线校验（Tweakeroo 用户跳过，flexi placement 会偏离真实射线）
+        if (enforceRaytrace && !plugin.masaCompat.shouldSkipRaytrace(p) && !rayTraceMatches(p, placed, against)) {
             deny(event, p, "raytrace")
             return
         }

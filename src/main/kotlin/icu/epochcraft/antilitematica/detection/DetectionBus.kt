@@ -3,6 +3,7 @@ package icu.epochcraft.antilitematica.detection
 import icu.epochcraft.antilitematica.AntiLitematica
 import icu.epochcraft.antilitematica.event.DetectionEvent
 import icu.epochcraft.antilitematica.event.DetectionType
+import icu.epochcraft.antilitematica.util.BedrockPlayerDetector
 import org.bukkit.entity.Player
 import java.util.concurrent.CopyOnWriteArrayList
 
@@ -46,6 +47,12 @@ class DetectionBus(private val plugin: AntiLitematica) {
      * @return true 表示有处理器认领
      */
     fun emit(ctx: DetectionContext): Boolean {
+        // 基岩版玩家豁免（Geyser，基岩版无 Litematica，从源头消除误报）
+        if (plugin.configHolder.bedrockExempt && BedrockPlayerDetector.isBedrockPlayer(ctx.player)) {
+            plugin.logger.fine("基岩版玩家豁免: ${ctx.player.name}")
+            return false
+        }
+
         // 1. fire Bukkit 事件（外部插件可取消）
         val event = DetectionEvent(ctx.player, ctx.channel, ctx.reason, ctx.detectionType)
         plugin.server.pluginManager.callEvent(event)
