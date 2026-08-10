@@ -1,6 +1,7 @@
 package icu.epochcraft.antilitematica.update
 
 import icu.epochcraft.antilitematica.AntiLitematica
+import icu.epochcraft.antilitematica.util.Scheduler
 import com.google.gson.JsonParser
 import java.net.URI
 import java.net.http.HttpClient
@@ -31,7 +32,7 @@ class UpdateChecker(private val plugin: AntiLitematica) {
     /** 异步检查更新（onEnable 时调用） */
     fun checkAsync() {
         if (!plugin.configHolder.updateCheckerEnabled) return
-        plugin.server.scheduler.runTaskAsynchronously(plugin, Runnable { check() })
+        Scheduler.async(plugin) { check() }
     }
 
     /** 同步检查更新 */

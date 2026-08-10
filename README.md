@@ -12,7 +12,7 @@
 
 ---
 
-## 功能特性（28 项，已移植旧版全套核心）
+## 功能特性（28 项）
 
 **检测拦截**
 - 1. **进服拦截**：检测到客户端注册禁用插件通道（如 `servux:litematics`）立即处理，不让进服
@@ -47,7 +47,7 @@
 - 26. **bStats 统计**：匿名统计（可选，config.yml 填插件 ID 启用）
 
 **管理**
-- 27. **双菜单系统**：Paper 1.21.7+ 原生 Dialog 菜单 / 旧版本箱子菜单，自动切换
+- 27. **双菜单系统**：Paper 1.21.7+ 原生 Dialog 菜单 / 低版本服务端自动回退箱子菜单
 - 28. **预设模式**：strict（严格+自动封禁）/ normal / lite 一键切换
 - **统一检测总线**：所有检测源 → DetectionBus → 惩罚管线（渐进 / 基础动作），路径唯一
 - **多语言**：`lang/` 文件夹内置简中/繁中/英文，`config.yml` 的 `language` 一键切换，支持自定义全部文案
@@ -67,7 +67,7 @@ Bukkit 会为每个新通道触发 `PlayerRegisterChannelEvent`，插件只需�
 |---|---|---|
 | Litematica 26.x (Fabric) | `servux:litematics` | `ServuxLitematicaHandler.CHANNEL_ID`，客户端初始化时无条件注册 |
 | Litematica (Forge 移植版) | `servux:litematics` | 同上 |
-| Schematica (1.12 旧版) | `schematica` | `SimpleNetworkWrapper(Reference.MODID)` |
+| Schematica (1.12) | `schematica` | `SimpleNetworkWrapper(Reference.MODID)` |
 | Litematica Printer | （无独立通道） | 依赖 Litematica，检测到 Litematica 即覆盖 |
 
 > 通道列表可在 `config.yml` 中自由扩展，可用于检测任意通过插件通道上报 mod 的客户端。
@@ -83,7 +83,7 @@ Bukkit 会为每个新通道触发 `PlayerRegisterChannelEvent`，插件只需�
 │       ├── 通道管理：添加通道（text 输入）、移除通道（text 输入）
 │       └── 设置：控制台日志（bool 开关）、管理员通知（bool 开关）
 │
-└── 旧版本服务端
+└── 低版本服务端
     └── 箱子菜单（menu/ChestAdminMenu.kt，54 格）
         ├── 状态栏 / 禁用通道列表（点击移除）
         ├── 常用通道快捷添加
@@ -91,7 +91,7 @@ Bukkit 会为每个新通道触发 `PlayerRegisterChannelEvent`，插件只需�
         └── 重载 / 刷新 / 关闭
 ```
 
-> Dialog 菜单通过反射延迟加载（`menu/MenuFactory.kt`），旧版本服务端永远不会加载
+> Dialog 菜单通过反射延迟加载（`menu/MenuFactory.kt`），低版本服务端永远不会加载
 > Dialog API 类，因此不会出现 `NoClassDefFoundError`。
 
 ## 构建
@@ -126,7 +126,7 @@ mvn clean package
 # 要检测的插件通道
 banned-channels:
   - "servux:litematics"   # Litematica 投影（Fabric/Forge）
-  - "schematica"          # Schematica 旧版
+  - "schematica"          # Schematica
 
 # 踢出消息（支持 & 颜色代码）
 kick-message: "&c检测到你安装了不允许的 Mod（Litematica 投影），&7请移除后重新加入服务器！"

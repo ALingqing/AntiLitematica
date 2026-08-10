@@ -9,6 +9,7 @@ import icu.epochcraft.antilitematica.detection.DetectionContext
 import icu.epochcraft.antilitematica.detection.DetectionHandler
 import icu.epochcraft.antilitematica.event.DetectionType
 import icu.epochcraft.antilitematica.util.MessageUtil
+import icu.epochcraft.antilitematica.util.Scheduler
 import org.bukkit.entity.Player
 
 /**
@@ -73,9 +74,9 @@ class GraduatedPunisher(
         // ---- 执行动作 ----
         when (level.action) {
             PunishmentAction.WARN -> player.sendMessage(msg)
-            PunishmentAction.KICK -> plugin.server.scheduler.runTask(plugin, Runnable {
+            PunishmentAction.KICK -> Scheduler.entity(player, plugin) {
                 if (player.isOnline) player.kickPlayer(msg)
-            })
+            }
             PunishmentAction.TEMPBAN ->
                 plugin.banManager.ban(player.uniqueId, player.name, msg, level.durationMillis)
             PunishmentAction.BAN ->

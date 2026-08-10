@@ -2,6 +2,7 @@ name: AntiLitematica
 version: '7.0.0'
 main: icu.epochcraft.antilitematica.AntiLitematica
 api-version: '1.20'
+folia-supported: true
 author: 阿清
 description: 检测并阻止携带 Litematica（投影）/ Schematica 等 mod 的玩家进入服务器
 website: https://epochcraft.icu

@@ -8,6 +8,7 @@ import icu.epochcraft.antilitematica.detection.DetectionContext
 import icu.epochcraft.antilitematica.detection.DetectionHandler
 import icu.epochcraft.antilitematica.detection.DetectionSource
 import icu.epochcraft.antilitematica.event.DetectionType
+import icu.epochcraft.antilitematica.util.Scheduler
 import org.bukkit.entity.Player
 
 /**
@@ -50,9 +51,9 @@ class DetectionPunisher(private val plugin: AntiLitematica) : DetectionHandler {
                         return
                     }
                 }
-                plugin.server.scheduler.runTask(plugin, Runnable {
+                Scheduler.entity(player, plugin) {
                     if (player.isOnline) player.kickPlayer(cfg.kickMessage)
-                })
+                }
             }
             ActionType.WARN -> {
                 val mod = ChannelRegistry.describe(channel) ?: channel

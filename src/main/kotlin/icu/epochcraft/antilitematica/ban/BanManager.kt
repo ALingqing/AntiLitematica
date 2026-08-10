@@ -3,6 +3,7 @@ package icu.epochcraft.antilitematica.ban
 import icu.epochcraft.antilitematica.AntiLitematica
 import icu.epochcraft.antilitematica.database.BanRecord
 import icu.epochcraft.antilitematica.database.DetectionDatabase
+import icu.epochcraft.antilitematica.util.Scheduler
 import org.bukkit.Bukkit
 import org.bukkit.entity.Player
 import org.bukkit.event.EventHandler
@@ -36,22 +37,21 @@ class BanManager(
     private val isInternal: Boolean get() = backend is InternalBanBackend
 
     /** 定时清理过期封禁的调度句柄 */
-    private var purgeTaskId: Int = -1
+    private var purgeTask: Scheduler.TaskHandle? = null
 
     /** 开始定时任务（每 5 分钟清理一次过期封禁） */
     fun start() {
-        purgeTaskId = plugin.server.scheduler.runTaskTimerAsynchronously(plugin, Runnable {
+        purgeTask = Scheduler.asyncTimer(plugin, 20L * 60 * 5, 20L * 60 * 5) {
             val removed = database.purgeExpiredBans()
             if (removed > 0) {
                 plugin.logger.info("已自动解封 $removed 名玩家（封禁到期）")
             }
-        }, 20L * 60 * 5, 20L * 60 * 5).taskId
+        }
     }
 
     fun stop() {
-        if (purgeTaskId != -1) {
-            plugin.server.scheduler.cancelTask(purgeTaskId)
-        }
+        purgeTask?.cancel()
+        purgeTask = null
     }
 
     /**
@@ -73,14 +73,14 @@ class BanManager(
 
         // 踢出在线玩家
         Bukkit.getPlayer(uuid)?.let { player ->
-            plugin.server.scheduler.runTask(plugin, Runnable {
+            Scheduler.entity(player, plugin) {
                 if (player.isOnline) {
                     val msg = plugin.configHolder.lang("ban.kick")
                         .replace("{reason}", reason)
                         .replace("{expires}", if (expiresAt == BanRecord.PERMANENT) "永久" else formatRemaining(expiresAt))
                     player.kickPlayer(msg)
                 }
-            })
+            }
         }
     }
 

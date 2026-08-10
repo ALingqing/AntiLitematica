@@ -1,6 +1,7 @@
 package icu.epochcraft.antilitematica.detection
 
 import icu.epochcraft.antilitematica.AntiLitematica
+import icu.epochcraft.antilitematica.util.Scheduler
 import org.bukkit.event.EventHandler
 import org.bukkit.event.EventPriority
 import org.bukkit.event.Listener
@@ -54,14 +55,14 @@ class ModDetectionListener(
         val player = event.player
         val cfg = plugin.configHolder
 
-        plugin.server.scheduler.runTaskLater(plugin, Runnable {
-            if (!player.isOnline) return@Runnable
+        Scheduler.globalLater(plugin, cfg.recheckDelayTicks) {
+            if (!player.isOnline) return@globalLater
 
             // 通道复查
             val hit = service.findBannedChannel(player.listeningPluginChannels)
             if (hit != null) {
                 service.handleDetection(player, hit, DetectionSource.CHANNEL)
-                return@Runnable
+                return@globalLater
             }
 
             // Brand 检测
@@ -69,6 +70,6 @@ class ModDetectionListener(
             if (brand != null && brand.lowercase() in cfg.brandBlocklist) {
                 service.handleDetection(player, brand, DetectionSource.BRAND)
             }
-        }, cfg.recheckDelayTicks)
+        }
     }
 }

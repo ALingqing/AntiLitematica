@@ -105,6 +105,7 @@ class AntiLitematica : JavaPlugin() {
         private set
 
     override fun onEnable() {
+        logStartupBanner()
         saveDefaultConfig()
 
         // 依赖装配
@@ -170,10 +171,34 @@ class AntiLitematica : JavaPlugin() {
     }
 
     override fun onDisable() {
+        logShutdownBanner()
         AntiLitematicaAPI.shutdown()
         signalDetector?.shutdown()
         banManager.stop()
         database.close()
         logger.info("已卸载")
+    }
+
+    // ---------------- 开关机动画（模仿旧版 ASCII 横幅） ----------------
+
+    /** 启动横幅：输出 AntiLitematica ASCII 艺术字 + 版本信息 */
+    private fun logStartupBanner() {
+        logger.info(
+            """
+            
+               █████╗ ███╗   ██╗████████╗██╗██╗     ██╗████████╗███████╗███╗   ███╗ █████╗ ████████╗██╗ █████╗   
+              ██╔══██╗████╗  ██║╚══██╔══╝██║██║     ██║╚══██╔══╝██╔════╝████╗ ████║██╔══██╗╚══██╔══╝██║██╔══██╗  
+              ███████║██╔██╗ ██║   ██║   ██║██║     ██║   ██║   █████╗  ██╔████╔██║███████║   ██║   ██║███████║  
+              ██╔══██║██║╚██╗██║   ██║   ██║██║     ██║   ██║   ██╔══╝  ██║╚██╔╝██║██╔══██║   ██║   ██║██╔══██║  
+              ██║  ██║██║ ╚████║   ██║   ██║███████╗██║   ██║   ███████╗██║ ╚═╝ ██║██║  ██║   ██║   ██║██║  ██║  
+              ╚═╝  ╚═╝╚═╝  ╚═══╝   ╚═╝   ╚═╝╚══════╝╚═╝   ╚═╝   ╚══════╝╚═╝     ╚═╝╚═╝  ╚═╝   ╚═╝   ╚═╝╚═╝  ╚═╝  
+            """.trimIndent(),
+        )
+        logger.info("AntiLitematica v${description.version} enabled | Author: 阿清")
+    }
+
+    /** 关机横幅 */
+    private fun logShutdownBanner() {
+        logger.info("AntiLitematica v${description.version} disabled | Author: 阿清")
     }
 }
