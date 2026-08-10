@@ -32,6 +32,8 @@ class GraduatedPunisher(
     override fun handle(ctx: DetectionContext): Boolean {
         // 渐进惩罚未开启 → 放行给 DetectionPunisher（基础动作）
         if (!plugin.configHolder.graduatedPunishment.enabled) return false
+        // 多世界兼容：该世界已禁用渐进惩罚 → 放行基础动作
+        if (plugin.configHolder.worldOverride(ctx.player.world.name)?.graduatedEnabled == false) return false
         // 环境通道（fml:/fabric:）→ 放行（强制 LOG，防误伤 Forge/Fabric）
         if (ctx.detectionType == DetectionType.CHANNEL && ChannelRegistry.isEnvironmentChannel(ctx.channel)) return false
         punish(ctx.player, ctx.channel, ctx.reason)

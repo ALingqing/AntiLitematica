@@ -178,6 +178,28 @@ update-checker: true
 update-repo: "EpochcraftMC/AntiLitematica"
 ```
 
+## 多世界
+
+按世界覆盖检测设置（世界名不区分大小写），未配置的世界使用全局设置：
+
+```yaml
+worlds:
+  world_creative:
+    detection-enabled: false        # 该世界完全禁用检测
+    anti-printer-enabled: false     # 禁用防 Printer
+    command-guard-enabled: false    # 禁用命令防护
+    graduated-enabled: false        # 禁用渐进惩罚
+```
+
+| 覆盖项 | 说明 |
+|---|---|
+| `detection-enabled` | 该世界是否启用检测（null = 全局） |
+| `anti-printer-enabled` | 该世界是否启用防 Printer |
+| `command-guard-enabled` | 该世界是否启用命令防护 |
+| `graduated-enabled` | 该世界是否启用渐进惩罚 |
+
+> 适用于创造服 / 建筑服 / 小游戏服等需要放行的世界。
+
 ## 多语言
 
 语言文件位于 `plugins/AntiLitematica/lang/`，内置：

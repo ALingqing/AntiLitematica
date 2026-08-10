@@ -1,0 +1,199 @@
+# AntiLitematica Configuration
+config_version: 3
+
+# 全局开关，设为 false 可完全禁用插件所有功能
+enabled: true
+
+# 服务器默认语言
+lang: "zh_CN"
+# 开启后自动检测玩家客户端语言
+auto_locale: true
+
+# 检测：监控 Litematica 的插件通道和网络特征
+detection:
+  enabled: true
+  # 监听以下插件通道
+  channels:
+    - "servux:litematics"
+  # 主动拦截 servux 数据包，防止投影数据同步
+  block_servux: true
+  # 检测到违规时执行的服务器命令
+  commands: []
+  # 执行命令后是否踢出
+  kick_after_commands: true
+  # ProtocolLib 深度包检测
+  signals:
+    servux_metadata:
+      enabled: true
+    easy_place:
+      enabled: true
+      rel_min: -0.5
+      rel_max: 1.5
+      cancel_packet: false
+    nbt_query:
+      enabled: true
+      allow_op: true
+      cancel_packet: true
+  # 检测后的处理动作：LOG/KICK/BAN/COMMANDS
+  action: "KICK"
+  # 兼容新配置：惩罚模式（LOG / WARN / KICK）
+  punish_mode: "KICK"
+  reason: "Forbidden client mod detected (Litematica)."
+
+# 反 Printer：分析方块放置行为
+anti_printer:
+  enabled: true
+  # 是否也在创造模式检测
+  apply_to_creative: true
+  # 服务端强制射线追踪
+  enforce_raytrace: true
+  reach_survival: 5.0
+  reach_creative: 6.0
+  extra_reach_allowance: 0.25
+  # 放置速度限制（每秒），0 为关闭
+  max_blocks_per_second: 14
+  # 检测连续放置同类型方块
+  detect_consecutive_same_type: true
+  consecutive_same_type_threshold: 6
+  # 检测放置时无视角变化
+  detect_no_look_change: true
+  no_look_change_threshold: 5
+  # 违规计数窗口
+  violations:
+    window_ms: 8000
+    kick_at: 8
+
+# 命令防护：拦截快速粘贴的指令爆破
+command_guard:
+  enabled: true
+  # 要拦截的命令前缀
+  blocked_commands:
+    - "/setblock"
+  # 豁免命令
+  allowed_commands:
+    - "/msg"
+    - "/tell"
+    - "/r"
+  max_per_window: 8
+  window_ms: 3000
+  violations:
+    window_ms: 8000
+    kick_at: 5
+
+# 渐进惩罚：按违规次数逐步升级
+# 警告: 默认启用! 如果未仔细配置，玩家检测几次后会自动触发临时封禁乃至永久封禁
+#       建议首次使用先设为 false，理解各个等级后再启用
+graduated_punishment:
+  enabled: false
+  window_minutes: 60
+  # sqlite / mysql / memory
+  storage: sqlite
+  mysql:
+    host: "localhost"
+    port: 3306
+    database: "antilitematica"
+    user: "root"
+    password: ""
+  levels:
+    1:
+      action: warn
+      duration: "0"
+      reason: "使用投影模组 - 警告 (1/3)"
+      broadcast: false
+      staff_alert: true
+    2:
+      action: tempban
+      duration: "30m"
+      reason: "多次使用投影模组 - 临时封禁 (2/3)"
+      broadcast: true
+      staff_alert: true
+    3:
+      action: ban
+      duration: "0"
+      reason: "屡次使用投影模组 - 永久封禁 (3/3)"
+      broadcast: true
+      staff_alert: true
+  exceed_max:
+    action: ban
+    duration: "0"
+    reason: "违规次数过多 - 永久封禁"
+  # 封禁插件优先级
+  ban_plugins:
+    - "LiteBans"
+    - "AdvancedBan"
+    - "EssentialsX"
+
+# 反作弊集成
+integration:
+  enabled: false
+  type: "none"
+  violation_level: 10
+  check_prefix: "AntiLitematica"
+
+# 违规白名单：受信任玩家不处罚
+whitelist:
+  enabled: false
+  mode: "LOG_ONLY"
+  players: []
+
+# 世界白名单：这些世界中不检测
+world_whitelist:
+  enabled: false
+  worlds: []
+
+# Discord 通知
+discord:
+  enabled: false
+  webhook_url: ""
+  username: "AntiLitematica"
+  embed_title: "Forbidden client detected"
+  embed_color: 16711680
+  notify_on_detection: true
+  notify_on_punish: true
+
+# 兼容模式：为 Tweakeroo 等合法辅助模组放宽检测
+# tweakeroo_mode: true 时，enforce_raytrace 跳过柔性放置检查
+#                        easy_place 信号阈值放宽 (EP_MIN_CONSECUTIVE 从 3 提到 8)
+#                        consecutive_same_type 比例从 80% 放宽到 95%
+compatibility:
+  tweakeroo_mode: false
+
+# QQ 机器人通知
+onebot:
+  enabled: false
+  http_url: "http://localhost:5700"
+  access_token: ""
+  group_id: 0
+
+# 动态阈值：根据服务器负载调整灵敏度
+dynamic_threshold:
+  enabled: false
+  check_interval_seconds: 30
+  tps:
+    high: 19.5
+    low: 16.0
+  players:
+    high: 50
+    low: 5
+  multiplier:
+    min: 1.0
+    max: 2.0
+
+# 检测日志文件
+detection_log:
+  enabled: false
+  file: "detections.log"
+
+# 统计数据
+stats:
+  enabled: true
+  record_retention_days: 30
+  stats_retention_days: 90
+
+# 多世界配置（覆盖全局设置）
+# 在此按世界名设置独立开关，未列出的世界使用全局配置
+worlds:
+
+# bStats 匿名统计
+bstats:
+  enabled: true

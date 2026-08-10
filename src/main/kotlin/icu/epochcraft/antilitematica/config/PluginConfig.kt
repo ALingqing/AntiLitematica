@@ -210,6 +210,33 @@ class PluginConfig(
     var crossServerSyncEnabled: Boolean = false
         private set
 
+    // ---------------- 多世界兼容 ----------------
+
+    /** 按世界覆盖配置（世界名小写 -> 覆盖项，null = 跟随全局） */
+    val worldOverrides: MutableMap<String, WorldOverride> = linkedMapOf()
+
+    /**
+     * 单世界覆盖配置：字段为 null 时跟随全局设置。
+     */
+    data class WorldOverride(
+        /** 该世界是否启用检测（null = 全局） */
+        val detectionEnabled: Boolean? = null,
+        /** 该世界是否启用防 Printer（null = 全局） */
+        val antiPrinterEnabled: Boolean? = null,
+        /** 该世界是否启用命令防护（null = 全局） */
+        val commandGuardEnabled: Boolean? = null,
+        /** 该世界是否启用渐进惩罚（null = 全局） */
+        val graduatedEnabled: Boolean? = null,
+    )
+
+    /** 查询某世界的覆盖配置（未配置返回 null） */
+    fun worldOverride(worldName: String?): WorldOverride? =
+        worldName?.let { worldOverrides[it.lowercase()] }
+
+    /** 读取可空的布尔配置（不存在返回 null） */
+    private fun org.bukkit.configuration.ConfigurationSection?.optBool(path: String): Boolean? =
+        if (this != null && contains(path)) getBoolean(path) else null
+
     // ---------------- 通知（纯出站） ----------------
 
     /** Discord Webhook 地址（出站 HTTPS，无需开端口） */
@@ -365,6 +392,18 @@ class PluginConfig(
         tweakerooMode = yaml.getBoolean("compatibility.tweakeroo-mode", false)
         crossServerSyncEnabled = yaml.getBoolean("cross-server-sync.enabled", false)
 
+        // 多世界覆盖
+        worldOverrides.clear()
+        yaml.getConfigurationSection("worlds")?.getKeys(false)?.forEach { name ->
+            val ws = yaml.getConfigurationSection("worlds.$name")
+            worldOverrides[name.lowercase()] = WorldOverride(
+                detectionEnabled = ws.optBool("detection-enabled"),
+                antiPrinterEnabled = ws.optBool("anti-printer-enabled"),
+                commandGuardEnabled = ws.optBool("command-guard-enabled"),
+                graduatedEnabled = ws.optBool("graduated-enabled"),
+            )
+        }
+
         discordWebhookUrl = yaml.getString("webhook.discord", "") ?: ""
         onebotEnabled = yaml.getBoolean("webhook.onebot.enabled", false)
         onebotBaseUrl = yaml.getString("webhook.onebot.base-url", "http://127.0.0.1:3001") ?: "http://127.0.0.1:3001"
@@ -461,6 +500,17 @@ class PluginConfig(
         yaml.set("bedrock-exempt", bedrockExempt)
         yaml.set("compatibility.tweakeroo-mode", tweakerooMode)
         yaml.set("cross-server-sync.enabled", crossServerSyncEnabled)
+
+        // 多世界覆盖
+        val worldsSection = yaml.createSection("worlds")
+        worldOverrides.forEach { (name, o) ->
+            val ws = worldsSection.createSection(name)
+            o.detectionEnabled?.let { ws.set("detection-enabled", it) }
+            o.antiPrinterEnabled?.let { ws.set("anti-printer-enabled", it) }
+            o.commandGuardEnabled?.let { ws.set("command-guard-enabled", it) }
+            o.graduatedEnabled?.let { ws.set("graduated-enabled", it) }
+        }
+
         yaml.set("webhook.discord", discordWebhookUrl)
         yaml.set("webhook.onebot.enabled", onebotEnabled)
         yaml.set("webhook.onebot.base-url", onebotBaseUrl)

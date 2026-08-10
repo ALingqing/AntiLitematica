@@ -94,6 +94,8 @@ class PlacementGuard(private val plugin: AntiLitematica) : Listener {
         if (!enabled) return
         if (p.hasPermission("antilitematica.bypass")) return
         if (!applyToCreative && p.gameMode == GameMode.CREATIVE) return
+        // 多世界兼容：该世界已禁用防 Printer
+        if (plugin.configHolder.worldOverride(p.world.name)?.antiPrinterEnabled == false) return
 
         // 1. 限速
         if (maxBlocksPerSecond > 0 && !consume(p, count)) {

@@ -6,7 +6,7 @@
 
     <groupId>icu.epochcraft</groupId>
     <artifactId>AntiLitematica</artifactId>
-    <version>7.0.0-fix</version>
+    <version>7.0.1</version>
     <packaging>jar</packaging>
 
     <name>AntiLitematica</name>

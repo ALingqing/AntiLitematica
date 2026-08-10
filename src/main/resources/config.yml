@@ -167,6 +167,17 @@ compatibility:
 cross-server-sync:
   enabled: false
 
+# 多世界兼容：按世界覆盖检测设置（世界名不区分大小写）
+# 未配置的世界使用全局设置，字段可省略（省略则跟随全局）
+# 示例（创造服/建筑服禁用检测）：
+# worlds:
+#   world_creative:
+#     detection-enabled: false        # 该世界完全禁用检测
+#     anti-printer-enabled: false     # 禁用防 Printer
+#     command-guard-enabled: false    # 禁用命令防护
+#     graduated-enabled: false        # 禁用渐进惩罚
+worlds: {}
+
 # 通知（纯出站，无需开放端口）
 webhook:
   # Discord Webhook 地址（留空关闭）

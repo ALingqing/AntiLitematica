@@ -56,6 +56,8 @@ class CommandGuard(private val plugin: AntiLitematica) : Listener {
         if (!enabled) return
         val p = event.player
         if (p.hasPermission("antilitematica.bypass")) return
+        // 多世界兼容：该世界已禁用命令防护
+        if (plugin.configHolder.worldOverride(p.world.name)?.commandGuardEnabled == false) return
 
         val cmdLower = event.message.lowercase()
         val world = p.world.name.lowercase()

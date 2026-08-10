@@ -53,6 +53,12 @@ class DetectionBus(private val plugin: AntiLitematica) {
             return false
         }
 
+        // 多世界兼容：该世界已禁用检测
+        if (plugin.configHolder.worldOverride(ctx.player.world.name)?.detectionEnabled == false) {
+            plugin.logger.fine("世界 ${ctx.player.world.name} 已禁用检测: ${ctx.player.name}")
+            return false
+        }
+
         // 1. fire Bukkit 事件（外部插件可取消）
         val event = DetectionEvent(ctx.player, ctx.channel, ctx.reason, ctx.detectionType)
         plugin.server.pluginManager.callEvent(event)

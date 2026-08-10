@@ -14,7 +14,7 @@
 mvn clean package
 ```
 
-产物：`target/AntiLitematica-7.0.0-fix.jar`（shade 打包，内置 kotlin-stdlib / gson / sqlite-jdbc / bstats）
+产物：`target/AntiLitematica-7.0.1.jar`（shade 打包，内置 kotlin-stdlib / gson / sqlite-jdbc / bstats）
 
 ## 项目结构
 
