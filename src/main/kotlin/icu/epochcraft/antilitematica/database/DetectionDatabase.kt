@@ -34,7 +34,8 @@ class DetectionDatabase(private val plugin: AntiLitematica) {
                         channel TEXT NOT NULL,
                         mod_desc TEXT,
                         action TEXT NOT NULL,
-                        timestamp BIGINT NOT NULL
+                        timestamp BIGINT NOT NULL,
+                        evidence TEXT
                     )
                     """.trimIndent()
                 )
@@ -73,7 +74,21 @@ class DetectionDatabase(private val plugin: AntiLitematica) {
                     )
                     """.trimIndent()
                 )
+                stmt.execute(
+                    """
+                    CREATE TABLE IF NOT EXISTS player_mods (
+                        uuid TEXT NOT NULL,
+                        mod_id TEXT NOT NULL,
+                        version TEXT,
+                        first_seen BIGINT NOT NULL,
+                        last_seen BIGINT NOT NULL,
+                        PRIMARY KEY (uuid, mod_id)
+                    )
+                    """.trimIndent()
+                )
             }
+            // 旧版本数据库缺少 evidence 列（兼容 ALTER 升级）
+            ensureEvidenceColumn()
             plugin.logger.info("数据库已就绪: ${dbFile.name}")
         } catch (e: Exception) {
             plugin.logger.severe("数据库初始化失败: ${e.message}")
@@ -90,7 +105,7 @@ class DetectionDatabase(private val plugin: AntiLitematica) {
     fun insertDetection(record: DetectionRecord) {
         runCatching {
             connection!!.prepareStatement(
-                "INSERT INTO detections (uuid, name, channel, mod_desc, action, timestamp) VALUES (?,?,?,?,?,?)"
+                "INSERT INTO detections (uuid, name, channel, mod_desc, action, timestamp, evidence) VALUES (?,?,?,?,?,?,?)"
             ).use { ps ->
                 ps.setString(1, record.uuid.toString())
                 ps.setString(2, record.name)
@@ -98,9 +113,85 @@ class DetectionDatabase(private val plugin: AntiLitematica) {
                 ps.setString(4, record.modDescription)
                 ps.setString(5, record.action.name)
                 ps.setLong(6, record.timestamp)
+                ps.setString(7, record.evidence)
                 ps.executeUpdate()
             }
         }.onFailure { plugin.logger.warning("写入检测记录失败: ${it.message}") }
+    }
+
+    /** 旧库升级：为 detections 表补充 evidence 列（已存在则跳过） */
+    private fun ensureEvidenceColumn() {
+        runCatching {
+            val hasColumn = connection!!.createStatement().use { stmt ->
+                stmt.executeQuery("PRAGMA table_info(detections)").use { rs ->
+                    var found = false
+                    while (rs.next()) {
+                        if (rs.getString("name") == "evidence") {
+                            found = true
+                            break
+                        }
+                    }
+                    found
+                }
+            }
+            if (!hasColumn) {
+                connection!!.createStatement().execute("ALTER TABLE detections ADD COLUMN evidence TEXT")
+                plugin.logger.info("检测记录表已升级（新增 evidence 证据列）")
+            }
+        }.onFailure { plugin.logger.warning("检测记录表升级失败: ${it.message}") }
+    }
+
+    // ---------------- Mod 档案（握手解析的完整 mod 列表） ----------------
+
+    /** 写入玩家本次握手上报的全部 mod（幂等 upsert，保留 first_seen） */
+    fun upsertPlayerMods(uuid: UUID, mods: Map<String, String>) {
+        if (mods.isEmpty()) return
+        val now = System.currentTimeMillis()
+        runCatching {
+            connection!!.prepareStatement(
+                """INSERT INTO player_mods (uuid, mod_id, version, first_seen, last_seen)
+                   VALUES (?,?,?,?,?)
+                   ON CONFLICT(uuid, mod_id) DO UPDATE SET
+                     version = excluded.version,
+                     last_seen = excluded.last_seen""".trimIndent()
+            ).use { ps ->
+                mods.forEach { (modId, version) ->
+                    ps.setString(1, uuid.toString())
+                    ps.setString(2, modId)
+                    ps.setString(3, version)
+                    ps.setLong(4, now)
+                    ps.setLong(5, now)
+                    ps.addBatch()
+                }
+                ps.executeBatch()
+            }
+        }.onFailure { plugin.logger.warning("写入 mod 档案失败: ${it.message}") }
+    }
+
+    /** 读取玩家历史上上报过的全部 mod（mod_id -> version） */
+    fun getPlayerMods(uuid: UUID): Map<String, String> {
+        val map = linkedMapOf<String, String>()
+        runCatching {
+            connection!!.prepareStatement(
+                "SELECT mod_id, version FROM player_mods WHERE uuid = ?"
+            ).use { ps ->
+                ps.setString(1, uuid.toString())
+                ps.executeQuery().use { rs ->
+                    while (rs.next()) map[rs.getString("mod_id")] = rs.getString("version")
+                }
+            }
+        }
+        return map
+    }
+
+    /** 删除玩家 mod 档案（解封/清理时可选调用） */
+    fun clearPlayerMods(uuid: UUID) {
+        runCatching {
+            connection!!.prepareStatement("DELETE FROM player_mods WHERE uuid = ?").use { ps ->
+                ps.setString(1, uuid.toString())
+                ps.executeUpdate()
+            }
+        }
     }
 
     /** 玩家累计检测命中次数 */
@@ -346,6 +437,7 @@ class DetectionDatabase(private val plugin: AntiLitematica) {
                             modDescription = rs.getString("mod_desc"),
                             action = ActionType.parse(rs.getString("action")),
                             timestamp = rs.getLong("timestamp"),
+                            evidence = runCatching { rs.getString("evidence") }.getOrNull(),
                         )
                     }
                 }

@@ -44,4 +44,24 @@ object ChannelRegistry {
         val lower = channel.lowercase()
         return lower.startsWith("fml:") || lower.startsWith("fabric:") || lower == "fml|hs"
     }
+
+    /**
+     * 通道是否与某 modid 关联（交叉验证用：mod 列表与通道互证）。
+     * 正常客户端装了该 mod 必然注册对应通道；交叉验证发现缺失即可疑。
+     */
+    fun associatesMod(channel: String, modId: String): Boolean {
+        val lower = channel.lowercase()
+        return when (modId) {
+            "litematica" -> lower.contains("litematic") ||
+                lower == "servux:litematics" || lower == "servux:litematica"
+            "litematica-printer" -> false // 无独立通道，依赖 Litematica
+            "servux" -> lower.startsWith("servux")
+            "schematica" -> lower.startsWith("schematica")
+            "malilib" -> lower.startsWith("malilib")
+            "minihud" -> lower.startsWith("minihud")
+            "tweakeroo" -> lower.startsWith("tweakeroo")
+            "itemscroller" -> lower.startsWith("itemscroller")
+            else -> false
+        }
+    }
 }

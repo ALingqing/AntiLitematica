@@ -35,31 +35,50 @@ class UpdateChecker(private val plugin: AntiLitematica) {
         Scheduler.async(plugin) { check() }
     }
 
-    /** 同步检查更新 */
+    /** 同步检查更新（多源回退：直连 API → 加速代理，任一成功即停） */
     fun check() {
         val repo = plugin.configHolder.updateRepo
         if (repo.isBlank()) return
-        try {
-            val url = "https://api.github.com/repos/$repo/releases/latest"
-            val request = HttpRequest.newBuilder(URI.create(url))
-                .timeout(Duration.ofSeconds(8))
-                .header("Accept", "application/vnd.github+json")
-                .header("User-Agent", "AntiLitematica")
-                .GET()
-                .build()
-            val response = client.send(request, HttpResponse.BodyHandlers.ofString())
-            if (response.statusCode() != 200) return
 
-            val json = JsonParser.parseString(response.body()).asJsonObject
-            val tag = json.get("tag_name")?.asString ?: return
-            latestVersion = tag.removePrefix("v")
-            hasUpdate = isNewer(latestVersion!!, plugin.description.version)
-            if (hasUpdate) {
-                plugin.logger.info("发现新版本: v${latestVersion}（当前 v${plugin.description.version}），请前往 $repo 更新")
+        // 来源列表：api.github.com 国内直连不稳定，回退到加速代理
+        val sources = listOf(
+            "https://api.github.com/repos/$repo/releases/latest",
+            "https://ghfast.top/https://api.github.com/repos/$repo/releases/latest",
+            "https://ghproxy.net/https://api.github.com/repos/$repo/releases/latest",
+        )
+
+        for (url in sources) {
+            try {
+                if (checkSource(url)) return
+            } catch (e: Exception) {
+                plugin.logger.warning("更新检查失败（${url.take(60)}…）: ${e.message}")
             }
-        } catch (e: Exception) {
-            plugin.logger.warning("更新检查失败: ${e.message}")
         }
+    }
+
+    /** 尝试单个来源，成功（拿到版本号）返回 true */
+    private fun checkSource(url: String): Boolean {
+        val request = HttpRequest.newBuilder(URI.create(url))
+            .timeout(Duration.ofSeconds(8))
+            .header("Accept", "application/vnd.github+json")
+            .header("User-Agent", "AntiLitematica")
+            .GET()
+            .build()
+        val response = client.send(request, HttpResponse.BodyHandlers.ofString())
+        if (response.statusCode() != 200) return false
+
+        val json = try {
+            JsonParser.parseString(response.body()).asJsonObject
+        } catch (e: Exception) {
+            return false
+        }
+        val tag = json.get("tag_name")?.asString ?: return false
+        latestVersion = tag.removePrefix("v")
+        hasUpdate = isNewer(latestVersion!!, plugin.description.version)
+        if (hasUpdate) {
+            plugin.logger.info("发现新版本: v${latestVersion}（当前 v${plugin.description.version}），请前往 ${plugin.configHolder.updateRepo} 更新")
+        }
+        return true
     }
 
     /** 简易版本比较：1.2.3 > 1.1.9 */

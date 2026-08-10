@@ -138,6 +138,55 @@ signals:
     cancel: true
     threshold: 15
 
+# FML / Fabric Mod List 深度解析（需安装 ProtocolLib）
+# 客户端在握手阶段必定上报完整 mod 列表（modid + 版本），
+# 即使 mod 不注册插件通道（或客户端禁用通道上报）也能精确识别，
+# 与通道检测互补，可覆盖通道检测的全部盲区。
+#   覆盖协议：
+#     - fml:handshake      Forge/NeoForge 1.13-1.20.1（play 阶段）
+#     - fml:login          Forge/NeoForge 1.20.2+（configuration 阶段，需 ProtocolLib 5.2+）
+#     - fabric:handshake   Fabric 1.16.2-1.20.4（play 阶段）
+#     - fabric:login       Fabric 1.20.5+（configuration 阶段，需 ProtocolLib 5.2+）
+mod-list:
+  enabled: true
+  # 禁用 modid -> 策略（小写；支持按 mod 定制动作）
+  # 默认含投影本体 + 打印机 + masa 系常携带 mod，按服自行增删
+  banned-mod-ids:
+    litematica:
+      action: KICK
+      ban-duration: 30d
+    litematica-printer:
+      action: KICK
+      ban-duration: 30d
+    malilib:
+      action: KICK
+      ban-duration: 30d
+    servux:
+      action: KICK
+      ban-duration: 30d
+    schematica:
+      action: KICK
+      ban-duration: 30d
+    minihud:
+      action: KICK
+      ban-duration: 30d
+    tweakeroo:
+      action: KICK
+      ban-duration: 30d
+    itemscroller:
+      action: KICK
+      ban-duration: 30d
+  # 变化追踪：历史安装过禁用 mod，本次握手未上报（疑似进服前卸载）-> 处理
+  # 需持久化 mod 档案（自动写入数据库），默认开启
+  detect-mod-changes: true
+  change-action: WARN
+  # 交叉验证：mod 列表与通道 / Brand 互相矛盾 -> 处理
+  #   通道缺失 = 疑似通道注销欺骗；Brand 矛盾 = 疑似伪装
+  detect-xcheck: true
+  xcheck-action: KICK
+  # 未命中黑名单也记录完整 mod 列表（审计用，仅 LOG 不处罚）
+  log-all-mod-lists: true
+
 # 反作弊集成
 # 把检测同步 flag 给第三方反作弊：auto / grim / vulcan / matrix
 # 服务端未安装对应反作弊时自动降级

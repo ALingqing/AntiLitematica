@@ -12,43 +12,44 @@
 
 ---
 
-## 功能特性（28 项）
+## 功能特性（29 项）
 
 **检测拦截**
 - 1. **进服拦截**：检测到客户端注册禁用插件通道（如 `servux:litematics`）立即处理，不让进服
 - 2. **动作分级**：每个通道可配置 `KICK 踢出 / BAN 封禁 / WARN 警告 / LOG 仅记录`
 - 3. **通道指纹库**：内置已知 mod 通道说明（Litematica / Schematica / malilib / Servux…）
-- 4. **Forge/FML 识别**：识别 `fml:*` 握手通道（仅记录，不误伤）
-- 5. **Fabric 识别**：识别 `fabric:*` 环境通道（仅记录，不误伤）
-- 6. **Brand 拦截**：黑名单客户端标识（`fabric/forge/lunar…`）命中即踢，默认关闭防误伤
-- 7. **二次验证**：进服延迟复查已注册通道 + Brand，防注册-注销欺骗
-- 8. **误报豁免**：管理员标记误报后，该玩家+通道组合不再拦截
-- 9. **防 Printer**：令牌桶限速 + 射线校验 + 连续同类型（≥80%）+ 视角不变四重检测
-- 10. **命令防护**：拦截 quick-paste 命令滥用（如 `/setblock` 连发），窗口限流
-- 11. **EasyPlace 信号**（需 ProtocolLib）：命中向量偏移异常检测易放模式，连续 N 次触发
-- 12. **NBT 查询风暴**（需 ProtocolLib）：高频 NBT 查询检测（频率门控，防误伤）
+- 4. **Mod List 深度解析**（需 ProtocolLib）：解析 FML/Fabric 握手上报的完整 mod 列表，不注册通道的 mod 也能精确识别；按 modid 定制动作 + 变化追踪（历史有禁用 mod 本次未上报即处理）+ 三方交叉验证（通道/Brand 互证）
+- 5. **Forge/FML 识别**：识别 `fml:*` 握手通道（仅记录，不误伤）
+- 6. **Fabric 识别**：识别 `fabric:*` 环境通道（仅记录，不误伤）
+- 7. **Brand 拦截**：黑名单客户端标识（`fabric/forge/lunar…`）命中即踢，默认关闭防误伤
+- 8. **二次验证**：进服延迟复查已注册通道 + Brand，防注册-注销欺骗
+- 9. **误报豁免**：管理员标记误报后，该玩家+通道组合不再拦截
+- 10. **防 Printer**：令牌桶限速 + 射线校验 + 连续同类型（≥80%）+ 视角不变四重检测
+- 11. **命令防护**：拦截 quick-paste 命令滥用（如 `/setblock` 连发），窗口限流
+- 12. **EasyPlace 信号**（需 ProtocolLib）：命中向量偏移异常检测易放模式，连续 N 次触发
+- 13. **NBT 查询风暴**（需 ProtocolLib）：高频 NBT 查询检测（频率门控，防误伤）
 
 **惩罚与记录**
-- 13. **渐进惩罚**：WARN→KICK→TEMPBAN→BAN 按违规次数逐级升级（时间窗口内计数）
-- 14. **自动封禁**：累计 KICK 达阈值自动转封禁，时长可配
-- 15. **SQLite 数据库**：检测记录 / 封禁 / 误报 / 违规计数持久化
-- 16. **登录拦截**：被封禁玩家在登录阶段直接拒绝进入
-- 17. **到期自动解封**：定时清理过期封禁
-- 18. **统计面板**：`/antilitematica stats` 查看检测总数、通道分布、近 7 天趋势
-- 19. **玩家画像**：`history <玩家>` 查看个人检测记录
+- 14. **渐进惩罚**：WARN→KICK→TEMPBAN→BAN 按违规次数逐级升级（时间窗口内计数）
+- 15. **自动封禁**：累计 KICK 达阈值自动转封禁，时长可配
+- 16. **SQLite 数据库**：检测记录 / 封禁 / 误报 / 违规计数持久化（含证据列）
+- 17. **登录拦截**：被封禁玩家在登录阶段直接拒绝进入
+- 18. **到期自动解封**：定时清理过期封禁
+- 19. **统计面板**：`/antilitematica stats` 查看检测总数、通道分布、近 7 天趋势
+- 20. **玩家画像**：`history <玩家>` 查看个人检测记录
 
 **联动与通知**
-- 20. **反作弊集成**：检测同步 flag 给 GrimAC / Vulcan / Matrix（反射，自动探测）
-- 21. **Discord Webhook**：命中实时推送到 Discord（纯出站）
-- 22. **QQ 群通知**：OneBot/NapCat 兼容，出站调用 `send_group_msg`
-- 23. **管理员实时通知**：在线管理员（`antilitematica.notify`）即时收到命中信息
-- 24. **封禁后端联动**：LiteBans / AdvancedBan 可选封禁后端（双写 + 自动探测，登录拦截统一）
-- 25. **公开 API**：附属插件开发（查询/封禁/检测联动/统计，见 [docs/API.md](docs/API.md)）
-- 26. **bStats 统计**：匿名统计（可选，config.yml 填插件 ID 启用）
+- 21. **反作弊集成**：检测同步 flag 给 GrimAC / Vulcan / Matrix（反射，自动探测）
+- 22. **Discord Webhook**：命中实时推送到 Discord（纯出站）
+- 23. **QQ 群通知**：OneBot/NapCat 兼容，出站调用 `send_group_msg`
+- 24. **管理员实时通知**：在线管理员（`antilitematica.notify`）即时收到命中信息
+- 25. **封禁后端联动**：LiteBans / AdvancedBan 可选封禁后端（双写 + 自动探测，登录拦截统一）
+- 26. **公开 API**：附属插件开发（查询/封禁/检测联动/统计，见 [docs/API.md](docs/API.md)）
+- 27. **bStats 统计**：匿名统计（可选，config.yml 填插件 ID 启用）
 
 **管理**
-- 27. **双菜单系统**：Paper 1.21.7+ 原生 Dialog 菜单 / 低版本服务端自动回退箱子菜单
-- 28. **预设模式**：strict（严格+自动封禁）/ normal / lite 一键切换
+- 28. **双菜单系统**：Paper 1.21.7+ 原生 Dialog 菜单 / 低版本服务端自动回退箱子菜单
+- 29. **预设模式**：strict（严格+自动封禁）/ normal / lite 一键切换
 - **统一检测总线**：所有检测源 → DetectionBus → 惩罚管线（渐进 / 基础动作），路径唯一
 - **多语言**：`lang/` 文件夹内置简中/繁中/英文，`config.yml` 的 `language` 一键切换，支持自定义全部文案
 - **PlaceholderAPI**：`%antilitematica_detections%` 等占位符
@@ -71,6 +72,31 @@ Bukkit 会为每个新通道触发 `PlayerRegisterChannelEvent`，插件只需�
 | Litematica Printer | （无独立通道） | 依赖 Litematica，检测到 Litematica 即覆盖 |
 
 > 通道列表可在 `config.yml` 中自由扩展，可用于检测任意通过插件通道上报 mod 的客户端。
+
+### Mod List 深度解析（第二层防线）
+
+通道检测存在盲区：**部分 mod 不注册插件通道**，且客户端可禁用通道上报。
+但所有 Forge/NeoForge/Fabric 客户端在**握手阶段必定上报完整 mod 列表**（modid + 版本）：
+
+| 协议 | 通道 | 阶段 | 覆盖版本 |
+|---|---|---|---|
+| FML | `fml:handshake` | play | Forge / NeoForge 1.13 - 1.20.1 |
+| FML | `fml:login` | configuration | Forge / NeoForge 1.20.2+（需 ProtocolLib 5.2+） |
+| Fabric | `fabric:handshake` | play | Fabric 1.16.2 - 1.20.4 |
+| Fabric | `fabric:login` | configuration | Fabric 1.20.5+（需 ProtocolLib 5.2+） |
+
+插件拦截并解析握手包，提取 modid 列表与黑名单比对（如 `litematica`、`litematica-printer`、`servux`），
+命中即走统一惩罚管线，并把**完整 mod 列表存为证据**（`history` 可查看）。
+即使 mod 不注册任何插件通道也能精确识别。
+
+**策略化**：每个 modid 可单独配置 `KICK / BAN / WARN / LOG` 与封禁时长（`banned-mod-ids` 下的 map 配置）。
+
+**变化追踪**：每次握手把完整 mod 列表持久化到 `player_mods` 档案。
+若玩家历史安装过禁用 mod、本次握手却未上报（疑似进服前卸载），触发 `change-action` 处理——堵住"卸了再进、进了再装"的绕过路径。
+
+**交叉验证**（进服二次验证阶段）：mod 列表 × 通道 × Brand 三方互证：
+- mod 列表含禁用 mod 但未注册关联通道 → 疑似通道注销欺骗（`xcheck:channel:*`）
+- mod 加载器与 Brand 矛盾（如 Fabric mod 列表 + vanilla Brand）→ 疑似伪装（`xcheck:brand:*`）
 
 ## 菜单系统（版本自适应）
 
@@ -206,7 +232,10 @@ src/main/kotlin/icu/epochcraft/antilitematica/
 │   ├── PunishmentAction.kt / PunishmentLevel.kt
 ├── signal/
 │   ├── SignalFactory.kt           # ProtocolLib 探测 + 反射加载
-│   └── ProtocolLibSignalDetector.kt # EasyPlace/NBT 信号（全反射零依赖）
+│   ├── ProtocolLibSignalDetector.kt # EasyPlace/NBT 信号（全反射零依赖）
+│   ├── HandshakeParser.kt          # FML/Fabric 握手 Mod 列表解析（纯逻辑）
+│   ├── ModListHandshakeDetector.kt # Mod List 深度解析（全反射零依赖）
+│   └── HandshakeDetectorFactory.kt # Mod List 检测器工厂（无 ProtocolLib 自动跳过）
 ├── dialog/ ─ menu/ ─ notify/ ─ papi/ ─ statistics/ ─ update/
 └── util/                          # PaperVersion/MessageUtil/DurationParser/TokenBucket
 ```

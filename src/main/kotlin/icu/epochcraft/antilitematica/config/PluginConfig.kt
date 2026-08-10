@@ -184,6 +184,48 @@ class PluginConfig(
     var signals: SignalsConfig = SignalsConfig()
         private set
 
+    // ---------------- FML / Fabric Mod List 深度解析 ----------------
+
+    data class ModListConfig(
+        /** 是否启用（需 ProtocolLib） */
+        val enabled: Boolean = false,
+        /** modid(小写) -> 策略（action + 封禁时长），支持按 mod 定制 */
+        val bannedMods: Map<String, ChannelActionConfig> = defaultBannedMods(),
+        /** 变化追踪：历史有禁用 mod 但本次握手未上报 -> 处理（防进服前卸 mod） */
+        val detectModChanges: Boolean = true,
+        val changeAction: ActionType = ActionType.WARN,
+        /** 交叉验证：mod 列表与通道 / Brand 互相矛盾 -> 处理（抓伪装与通道注销欺骗） */
+        val detectXCheck: Boolean = true,
+        val xcheckAction: ActionType = ActionType.KICK,
+        /** 未命中黑名单也记录 mod 列表（审计，LOG 不处罚） */
+        val logAllModLists: Boolean = true,
+    ) {
+        companion object {
+            /** 默认禁用 modid：投影及 masa 系常被一起携带 */
+            fun defaultBannedMods(): Map<String, ChannelActionConfig> = linkedMapOf(
+                "litematica" to ChannelActionConfig(),
+                "litematica-printer" to ChannelActionConfig(),
+                "malilib" to ChannelActionConfig(),
+                "servux" to ChannelActionConfig(),
+                "schematica" to ChannelActionConfig(),
+                "minihud" to ChannelActionConfig(),
+                "tweakeroo" to ChannelActionConfig(),
+                "itemscroller" to ChannelActionConfig(),
+            )
+        }
+
+        /** 某 modid 的动作（未配置返回默认 KICK） */
+        fun actionFor(modId: String): ActionType =
+            bannedMods[modId.lowercase()]?.action ?: ActionType.KICK
+
+        /** 某 modid 的封禁时长（未配置返回 30 天） */
+        fun banDurationFor(modId: String): Long =
+            bannedMods[modId.lowercase()]?.banDuration ?: (30 * 86_400_000L)
+    }
+
+    var modList: ModListConfig = ModListConfig()
+        private set
+
     // ---------------- 反作弊集成 ----------------
 
     /** 优先接入的反作弊：auto / grim / vulcan / matrix */
@@ -381,6 +423,41 @@ class PluginConfig(
             SignalsConfig()
         }
 
+        // FML / Fabric Mod List 深度解析
+        val ml = yaml.getConfigurationSection("mod-list")
+        modList = if (ml != null) {
+            val banned = linkedMapOf<String, ChannelActionConfig>()
+            // 兼容两种格式：
+            //   map:  litematica: { action: KICK, ban-duration: 30d }
+            //   list: - "litematica"（默认 KICK / 30d）
+            val rawMap = ml.getConfigurationSection("banned-mod-ids")
+            if (rawMap != null) {
+                rawMap.getKeys(false).forEach { modId ->
+                    val m = rawMap.getConfigurationSection(modId)
+                    banned[modId.lowercase()] = ChannelActionConfig(
+                        action = ActionType.parse(m?.getString("action")),
+                        banDuration = DurationParser.parseMillis(m?.getString("ban-duration"), 30 * 86_400_000L),
+                    )
+                }
+            } else {
+                ml.getStringList("banned-mod-ids").forEach { id ->
+                    val normalized = id.trim().lowercase()
+                    if (normalized.isNotEmpty()) banned[normalized] = ChannelActionConfig()
+                }
+            }
+            ModListConfig(
+                enabled = ml.getBoolean("enabled", false),
+                bannedMods = banned.ifEmpty { ModListConfig.defaultBannedMods() },
+                detectModChanges = ml.getBoolean("detect-mod-changes", true),
+                changeAction = ActionType.parse(ml.getString("change-action")),
+                detectXCheck = ml.getBoolean("detect-xcheck", true),
+                xcheckAction = ActionType.parse(ml.getString("xcheck-action")),
+                logAllModLists = ml.getBoolean("log-all-mod-lists", true),
+            )
+        } else {
+            ModListConfig()
+        }
+
         // 反作弊集成
         antiCheatIntegration = yaml.getString("anti-cheat-integration", "auto") ?: "auto"
 
@@ -491,6 +568,21 @@ class PluginConfig(
         nq.set("allow-op", signals.nbtQueryAllowOp)
         nq.set("cancel", signals.nbtQueryCancel)
         nq.set("threshold", signals.nbtQueryThreshold)
+
+        // FML / Fabric Mod List 深度解析
+        val ml = yaml.createSection("mod-list")
+        ml.set("enabled", modList.enabled)
+        val modsSection = ml.createSection("banned-mod-ids")
+        modList.bannedMods.forEach { (modId, cfg) ->
+            val s = modsSection.createSection(modId)
+            s.set("action", cfg.action.name)
+            s.set("ban-duration", DurationParser.format(cfg.banDuration))
+        }
+        ml.set("detect-mod-changes", modList.detectModChanges)
+        ml.set("change-action", modList.changeAction.name)
+        ml.set("detect-xcheck", modList.detectXCheck)
+        ml.set("xcheck-action", modList.xcheckAction.name)
+        ml.set("log-all-mod-lists", modList.logAllModLists)
 
         // 反作弊集成
         yaml.set("anti-cheat-integration", antiCheatIntegration)

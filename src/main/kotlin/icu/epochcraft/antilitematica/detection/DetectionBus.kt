@@ -76,5 +76,9 @@ class DetectionBus(private val plugin: AntiLitematica) {
 
     /** 便捷：构造上下文并发射 */
     fun emit(player: Player, channel: String, reason: String, type: DetectionType): Boolean =
-        emit(DetectionContext(player, channel, reason, type))
+        emit(player, channel, reason, type, null)
+
+    /** 便捷：构造上下文并发射（带证据） */
+    fun emit(player: Player, channel: String, reason: String, type: DetectionType, evidence: String?): Boolean =
+        emit(DetectionContext(player, channel, reason, type, evidence))
 }

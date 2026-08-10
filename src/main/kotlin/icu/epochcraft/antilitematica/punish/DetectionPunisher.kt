@@ -24,21 +24,34 @@ import org.bukkit.entity.Player
 class DetectionPunisher(private val plugin: AntiLitematica) : DetectionHandler {
 
     override fun handle(ctx: DetectionContext): Boolean {
-        execute(ctx.player, ctx.channel, ctx.detectionType)
+        execute(ctx.player, ctx.channel, ctx.detectionType, ctx.evidence)
         return true
     }
 
     /** 执行基础动作 */
-    fun execute(player: Player, channel: String, type: DetectionType) {
+    fun execute(player: Player, channel: String, type: DetectionType, evidence: String? = null) {
         val cfg = plugin.configHolder
         val uuid = player.uniqueId
 
-        // 环境通道强制 LOG（防误伤 Forge/Fabric 环境）
-        val action = if (ChannelRegistry.isEnvironmentChannel(channel)) ActionType.LOG else cfg.getAction(channel)
+        // 动作解析：
+        //   mod:hide:*   -> 变化追踪动作（历史有禁用 mod 本次未上报）
+        //   xcheck:*     -> 交叉验证动作（通道/Brand 矛盾）
+        //   mod:*        -> mod-list 策略（按 modid 配置）
+        //   环境通道强制 LOG（防误伤 Forge/Fabric 环境）
+        val action = when {
+            channel.startsWith("mod:hide:") -> cfg.modList.changeAction
+            channel.startsWith("xcheck:") -> cfg.modList.xcheckAction
+            channel.startsWith("mod:") -> cfg.modList.actionFor(channel.removePrefix("mod:"))
+            ChannelRegistry.isEnvironmentChannel(channel) -> ActionType.LOG
+            else -> cfg.getAction(channel)
+        }
 
         when (action) {
             ActionType.BAN -> {
-                val duration = cfg.channels[channel.lowercase()]?.banDuration ?: cfg.autoBanDuration
+                val duration = when {
+                    channel.startsWith("mod:") -> cfg.modList.banDurationFor(channel.removePrefix("mod:"))
+                    else -> cfg.channels[channel.lowercase()]?.banDuration ?: cfg.autoBanDuration
+                }
                 plugin.banManager.ban(uuid, player.name, defaultReason(channel), duration)
             }
             ActionType.KICK -> {
@@ -47,7 +60,7 @@ class DetectionPunisher(private val plugin: AntiLitematica) : DetectionHandler {
                     val kicks = plugin.database.getKickCount(uuid) + 1
                     if (kicks >= cfg.kicksBeforeBan) {
                         plugin.banManager.ban(uuid, player.name, defaultReason(channel), cfg.autoBanDuration)
-                        record(player, channel, type, ActionType.BAN)
+                        record(player, channel, type, ActionType.BAN, evidence = evidence)
                         return
                     }
                 }
@@ -62,12 +75,18 @@ class DetectionPunisher(private val plugin: AntiLitematica) : DetectionHandler {
             ActionType.LOG -> Unit
         }
 
-        record(player, channel, type, action)
+        record(player, channel, type, action, evidence = evidence)
     }
 
     /** 仅记录（误报豁免 / 环境通道） */
-    fun recordLogOnly(player: Player, channel: String, type: DetectionType, flagged: Boolean = true) {
-        record(player, channel, type, ActionType.LOG, flagged)
+    fun recordLogOnly(
+        player: Player,
+        channel: String,
+        type: DetectionType,
+        flagged: Boolean = true,
+        evidence: String? = null,
+    ) {
+        record(player, channel, type, ActionType.LOG, flagged, evidence)
     }
 
     private fun defaultReason(channel: String): String =
@@ -80,6 +99,7 @@ class DetectionPunisher(private val plugin: AntiLitematica) : DetectionHandler {
         type: DetectionType,
         action: ActionType,
         flagged: Boolean = false,
+        evidence: String? = null,
     ) {
         val cfg = plugin.configHolder
         val mod = ChannelRegistry.describe(channel) ?: channel
@@ -87,6 +107,9 @@ class DetectionPunisher(private val plugin: AntiLitematica) : DetectionHandler {
             DetectionType.BRAND -> "BRAND"
             DetectionType.PRINTER -> "PRINTER"
             DetectionType.COMMAND -> "COMMAND"
+            DetectionType.NBT_QUERY -> "NBT_QUERY"
+            DetectionType.SIGNAL -> "SIGNAL"
+            DetectionType.MOD_LIST -> "MOD_LIST"
             else -> "CHANNEL"
         }
 
@@ -98,13 +121,15 @@ class DetectionPunisher(private val plugin: AntiLitematica) : DetectionHandler {
                 channel = if (type == DetectionType.BRAND) "brand:$channel" else channel,
                 modDescription = mod,
                 action = action,
+                evidence = evidence,
             ),
         )
 
         // 控制台日志
         if (cfg.logDetections) {
+            val evidenceSuffix = evidence?.let { " | 证据: $it" } ?: ""
             plugin.logger.warning(
-                "检测到玩家 ${player.name} ${if (flagged) "[误报豁免] " else ""}命中 [$channel] ($sourceName)，处理: ${action.name}"
+                "检测到玩家 ${player.name} ${if (flagged) "[误报豁免] " else ""}命中 [$channel] ($sourceName)，处理: ${action.name}$evidenceSuffix"
             )
         }
 
@@ -121,9 +146,14 @@ class DetectionPunisher(private val plugin: AntiLitematica) : DetectionHandler {
         }
 
         // 出站通知（Discord / QQ）
+        val notifSource = when (type) {
+            DetectionType.BRAND -> DetectionSource.BRAND
+            DetectionType.MOD_LIST -> DetectionSource.MOD_LIST
+            else -> DetectionSource.CHANNEL
+        }
         plugin.notificationService?.notifyDetection(
             player, channel, mod, action,
-            if (type == DetectionType.BRAND) DetectionSource.BRAND else DetectionSource.CHANNEL,
+            notifSource,
             flagged,
         )
 

@@ -15,4 +15,6 @@ data class DetectionRecord(
     val modDescription: String?,
     val action: ActionType,
     val timestamp: Long = System.currentTimeMillis(),
+    /** 检测证据（如握手解析出的完整 mod 列表），可空 */
+    val evidence: String? = null,
 )

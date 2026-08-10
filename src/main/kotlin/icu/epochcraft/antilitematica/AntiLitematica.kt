@@ -22,6 +22,8 @@ import icu.epochcraft.antilitematica.punish.DetectionPunisher
 import icu.epochcraft.antilitematica.punish.GraduatedPunisher
 import icu.epochcraft.antilitematica.punish.ViolationTracker
 import icu.epochcraft.antilitematica.signal.ProtocolLibSignalDetector
+import icu.epochcraft.antilitematica.signal.HandshakeDetectorFactory
+import icu.epochcraft.antilitematica.signal.ModListHandshakeDetector
 import icu.epochcraft.antilitematica.signal.SignalFactory
 import icu.epochcraft.antilitematica.statistics.BStatsHook
 import icu.epochcraft.antilitematica.statistics.StatsService
@@ -94,6 +96,10 @@ class AntiLitematica : JavaPlugin() {
     var signalDetector: ProtocolLibSignalDetector? = null
         private set
 
+    /** FML / Fabric Mod List 深度解析（服务端无 ProtocolLib 或未启用时为 null） */
+    var handshakeDetector: ModListHandshakeDetector? = null
+        private set
+
     var notificationService: NotificationService? = null
         private set
 
@@ -148,6 +154,11 @@ class AntiLitematica : JavaPlugin() {
         signalDetector = SignalFactory.create(this)
         signalDetector?.start()
 
+        // FML / Fabric Mod List 深度解析（ProtocolLib，可选）
+        handshakeDetector = HandshakeDetectorFactory.create(this)
+        handshakeDetector?.start()
+        handshakeDetector?.let { server.pluginManager.registerEvents(it, this) }
+
         // 菜单（按版本选择实现）
         adminMenu = MenuFactory.create(this)
 
@@ -187,6 +198,7 @@ class AntiLitematica : JavaPlugin() {
         AntiLitematicaAPI.shutdown()
         crossServerSync?.disable()
         signalDetector?.shutdown()
+        handshakeDetector?.shutdown()
         banManager.stop()
         database.close()
         logger.info("已卸载")

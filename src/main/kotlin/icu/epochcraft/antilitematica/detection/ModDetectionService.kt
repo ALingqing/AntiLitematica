@@ -30,13 +30,19 @@ class ModDetectionService(
         channels.firstOrNull { it.lowercase() in plugin.configHolder.channels.keys }
 
     /** 检测命中统一入口：误报/冷却检查后发射到检测总线 */
-    fun handleDetection(player: Player, channel: String, source: DetectionSource) {
+    fun handleDetection(
+        player: Player,
+        channel: String,
+        source: DetectionSource,
+        reason: String? = null,
+        evidence: String? = null,
+    ) {
         val cfg = plugin.configHolder
         val uuid = player.uniqueId
 
         // 1. 误报检查：该玩家 + 该通道已被管理员标记为误报则仅记录
         if (plugin.database.isFalsePositive(uuid, channel)) {
-            plugin.detectionPunisher.recordLogOnly(player, channel, typeOf(source))
+            plugin.detectionPunisher.recordLogOnly(player, channel, typeOf(source), evidence = evidence)
             return
         }
 
@@ -49,11 +55,14 @@ class ModDetectionService(
 
         // 3. 发射到统一检测总线（惩罚由管线决定：渐进 / 基础动作）
         lastEmittedAt[uuid] = now
-        plugin.detectionBus.emit(player, channel, banReason(channel), typeOf(source))
+        plugin.detectionBus.emit(player, channel, reason ?: banReason(channel), typeOf(source), evidence)
     }
 
-    private fun typeOf(source: DetectionSource): DetectionType =
-        if (source == DetectionSource.BRAND) DetectionType.BRAND else DetectionType.CHANNEL
+    private fun typeOf(source: DetectionSource): DetectionType = when (source) {
+        DetectionSource.BRAND -> DetectionType.BRAND
+        DetectionSource.MOD_LIST -> DetectionType.MOD_LIST
+        DetectionSource.CHANNEL -> DetectionType.CHANNEL
+    }
 
     private fun banReason(channel: String): String =
         plugin.configHolder.lang("detection.ban-reason").replace("{channel}", channel)

@@ -134,6 +134,58 @@ signals:
     threshold: 15
 ```
 
+## FML / Fabric Mod List 深度解析
+
+客户端在握手阶段必定上报完整 mod 列表（modid + 版本），即使 mod 不注册插件通道
+（或客户端禁用通道上报）也能精确识别，与通道检测互补。
+
+> 需要 ProtocolLib。`fml:login` / `fabric:login`（1.20.2+ / 1.20.5+）发生在
+> configuration 阶段，还需 ProtocolLib 5.2+；老版本服务端自动降级到 play 阶段握手。
+
+```yaml
+mod-list:
+  enabled: true
+  # 禁用 modid -> 策略（小写；支持按 mod 定制动作与封禁时长）
+  banned-mod-ids:
+    litematica:
+      action: KICK
+      ban-duration: 30d
+    litematica-printer:
+      action: KICK
+      ban-duration: 30d
+    malilib:
+      action: KICK
+      ban-duration: 30d
+    servux:
+      action: KICK
+      ban-duration: 30d
+    schematica:
+      action: KICK
+      ban-duration: 30d
+    minihud:
+      action: KICK
+      ban-duration: 30d
+    tweakeroo:
+      action: KICK
+      ban-duration: 30d
+    itemscroller:
+      action: KICK
+      ban-duration: 30d
+  # 变化追踪：历史安装过禁用 mod，本次握手未上报（疑似进服前卸载）-> 处理
+  detect-mod-changes: true
+  change-action: WARN
+  # 交叉验证：mod 列表与通道 / Brand 互相矛盾 -> 处理
+  #   通道缺失 = 疑似通道注销欺骗；Brand 矛盾 = 疑似伪装
+  detect-xcheck: true
+  xcheck-action: KICK
+  # 未命中黑名单也记录完整 mod 列表（审计用，仅 LOG 不处罚）
+  log-all-mod-lists: true
+```
+
+> 兼容旧格式：`banned-mod-ids` 也可写成字符串列表（`- "litematica"`），统一默认 KICK / 30d。
+> 完整 mod 列表会作为证据写入数据库（`/antilitematica history <玩家>` 可查看），
+> 并持久化到 `player_mods` 档案供变化追踪跨会话对比。
+
 ## 反作弊集成
 
 ```yaml

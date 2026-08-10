@@ -14,4 +14,7 @@ enum class DetectionSource {
 
     /** 客户端 Brand（minecraft:brand 载荷） */
     BRAND,
+
+    /** FML / Fabric 握手 Mod 列表解析 */
+    MOD_LIST,
 }

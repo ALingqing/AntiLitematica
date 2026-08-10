@@ -15,4 +15,6 @@ data class DetectionContext(
     /** 处理原因（用于踢出/封禁消息） */
     val reason: String,
     val detectionType: DetectionType,
+    /** 检测证据（如握手解析出的完整 mod 列表），用于数据库留存 */
+    val evidence: String? = null,
 )

@@ -41,6 +41,8 @@ class AntiLitematicaCommand(private val plugin: AntiLitematica) : CommandExecuto
             plugin.configHolder.reload()
             plugin.placementGuard.reload()
             plugin.commandGuard.reload()
+            plugin.signalDetector?.reload()
+            plugin.handshakeDetector?.reload()
             MessageUtil.send(sender, plugin.configHolder.lang("cmd.reloaded")
                 .replace("{channels}", plugin.configHolder.channels.keys.sorted().joinToString(", ")))
             return true

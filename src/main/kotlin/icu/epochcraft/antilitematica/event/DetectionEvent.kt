@@ -68,6 +68,9 @@ enum class DetectionType {
     /** ProtocolLib 信号（EasyPlace 等） */
     SIGNAL,
 
+    /** FML / Fabric 握手 Mod 列表解析 */
+    MOD_LIST,
+
     /** 其他 */
     OTHER,
 }

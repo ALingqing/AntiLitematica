@@ -73,6 +73,43 @@ class ModDetectionListener(
             val brand = player.clientBrandName
             if (brand != null && brand.lowercase() in cfg.brandBlocklist) {
                 service.handleDetection(player, brand, DetectionSource.BRAND)
+                return@globalLater
+            }
+
+            // Mod List 交叉验证（mod 列表 × 通道 × Brand 三方互证）
+            val parsed = plugin.handshakeDetector?.sessionModsOf(player)
+            if (parsed != null && cfg.modList.detectXCheck) {
+                val channels = player.listeningPluginChannels.map { it.lowercase() }
+
+                // 1. mod 列表有禁用 mod 但未注册关联通道 -> 通道注销欺骗 / 禁用通道上报
+                parsed.mods.keys.firstOrNull { it in cfg.modList.bannedMods.keys }?.let { modId ->
+                    if (channels.none { ChannelRegistry.associatesMod(it, modId) }) {
+                        service.handleDetection(
+                            player, "xcheck:channel:$modId", DetectionSource.MOD_LIST,
+                            reason = "Mod 列表含禁用 Mod $modId 但未注册关联通道（疑似通道注销欺骗）",
+                            evidence = parsed.summary(),
+                        )
+                        return@globalLater
+                    }
+                }
+
+                // 2. mod 加载器与客户端 Brand 矛盾 -> 伪装
+                val brandLower = player.clientBrandName?.lowercase()
+                val loaderMismatch = when (parsed.loader) {
+                    icu.epochcraft.antilitematica.signal.HandshakeParser.ModLoader.FABRIC ->
+                        brandLower != null && "fabric" !in brandLower
+                    icu.epochcraft.antilitematica.signal.HandshakeParser.ModLoader.FORGE,
+                    icu.epochcraft.antilitematica.signal.HandshakeParser.ModLoader.NEOFORGE ->
+                        brandLower != null && "fml" !in brandLower && "forge" !in brandLower
+                    else -> false
+                }
+                if (loaderMismatch) {
+                    service.handleDetection(
+                        player, "xcheck:brand:${parsed.loader.name.lowercase()}", DetectionSource.MOD_LIST,
+                        reason = "Mod 列表为 ${parsed.loader.displayName} 但客户端 Brand 为 $brandLower（疑似伪装）",
+                        evidence = parsed.summary(),
+                    )
+                }
             }
         }
     }
