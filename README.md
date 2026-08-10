@@ -104,7 +104,7 @@ mvn clean package
 
 **一条命令完成打包**：shade 把 kotlin-stdlib + gson + sqlite-jdbc 内置进 jar，无需额外安装依赖。
 
-产物：`target/AntiLitematica-1.1.0.jar`（15MB，内置全部依赖）
+产物：`target/AntiLitematica-7.0.0.jar`（15MB，内置全部依赖）
 
 如需适配其他 Paper 版本，修改 `pom.xml` 中的 `<paper.version>`：
 
@@ -116,7 +116,7 @@ mvn clean package
 
 ## 安装
 
-1. 将 `AntiLitematica-1.1.0.jar` 放入服务端 `plugins/` 目录
+1. 将 `AntiLitematica-7.0.0.jar` 放入服务端 `plugins/` 目录
 2. 重启服务端（或执行 `reload`）
 3. 首次启动自动生成 `plugins/AntiLitematica/config.yml`
 
